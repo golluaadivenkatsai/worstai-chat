@@ -580,7 +580,7 @@ class handler(http.server.BaseHTTPRequestHandler):
             # Remind the model to use the research in its final answer
             messages.append({'role': 'user', 'content': (
                 prompt + '\n\n[Use the research findings above to answer accurately. '
-                'Mention your sources briefly.]'
+                'Do not include a Sources section in your response.]'
             )})
         else:
             messages.append({'role': 'user', 'content': prompt})
