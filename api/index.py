@@ -8,7 +8,11 @@ import threading
 import concurrent.futures
 import datetime
 import googlesearch
+import os
+os.environ["HOME"] = "/tmp"
+os.environ["G4F_USER_CONFIG_DIR"] = "/tmp/g4f"
 import g4f
+
 # =============================================================================
 # WEB RESEARCH AGENT
 # Uses DuckDuckGo (free, no key) to find real URLs, then Jina AI reader
@@ -290,7 +294,7 @@ def run_web_research(query):
 
 def get_ai_response(messages, last_user_message):
     """
-    Blisteringly fast AI generation utilizing direct g4f library bypassing pollinations.
+    Blisteringly fast AI generation utilizing direct g4f library.
     Races 10 distinct models simultaneously.
     """
     models = [
@@ -339,36 +343,41 @@ def ask_auditor(system_prompt, user_prompt):
     models_to_race = [
         getattr(g4f.models, 'gpt_4o_mini', 'gpt-4o-mini'), 
         getattr(g4f.models, 'claude_3_haiku', 'claude-3-haiku'), 
-        getattr(g4f.models, 'gemini_flash', 'gemini-1.5-flash')
+        getattr(g4f.models, 'llama_3_1_8b_instruct', 'llama-3.1-8b-instruct')
     ]
+    
     from g4f.client import Client
     client = Client()
     
-    def fetch_model(model):
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': user_prompt}
-            ]
-        )
-        content = response.choices[0].message.content.strip()
-        if content:
-            return content
-        raise Exception("Empty response")
-
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(models_to_race))
-    future_to_model = {executor.submit(fetch_model, m): m for m in models_to_race}
-    for future in concurrent.futures.as_completed(future_to_model):
+    futures = {}
+    for mod in models_to_race:
+        def fetch(m):
+            try:
+                response = client.chat.completions.create(
+                    model=m, 
+                    messages=[
+                        {'role': 'system', 'content': system_prompt},
+                        {'role': 'user', 'content': user_prompt}
+                    ]
+                )
+                content = response.choices[0].message.content.strip()
+                if content: return content
+                raise Exception("Empty")
+            except Exception as e:
+                raise Exception(str(e))
+        futures[executor.submit(fetch, mod)] = mod
+        
+    for future in concurrent.futures.as_completed(futures, timeout=15):
         try:
             res = future.result()
             executor.shutdown(wait=False, cancel_futures=True)
             return res
         except Exception:
-            continue
+            pass
             
     executor.shutdown(wait=False, cancel_futures=True)
-    return "PASSED"
+    return f"[Auditor Offline: Timeout or blocked by free providers]"
 
 def run_auditor_swarm(draft, research, cfg, history):
     auditors_results = []
