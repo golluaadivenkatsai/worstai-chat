@@ -1,1 +1,7 @@
 .vercel
+node-v*
+node.zip
+node_modules
+__pycache__
+*.pyc
+scratch

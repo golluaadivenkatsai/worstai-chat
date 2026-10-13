@@ -7,10 +7,12 @@ import random
 import threading
 import concurrent.futures
 import datetime
-import googlesearch
+import time
+import sys
 import os
 os.environ["HOME"] = "/tmp"
 os.environ["G4F_USER_CONFIG_DIR"] = "/tmp/g4f"
+import googlesearch
 import g4f
 
 # =============================================================================
@@ -346,87 +348,133 @@ def run_web_research(query, location_context=''):
 
 def get_ai_response(messages, last_user_message, is_voice=False):
     """
-    Blisteringly fast AI generation utilizing direct g4f library.
-    Races proven working browserless free models simultaneously.
+    Blisteringly fast AI generation racing 3 independent, reliable engines simultaneously:
+    1. Direct HTTP Stream (binjie.fun)
+    2. Pollinations OpenAI Engine (text.pollinations.ai)
+    3. g4f Yqcloud Engine (g4f)
     """
-    try:
-        from g4f.Provider import Yqcloud
-    except Exception:
-        Yqcloud = None
+    sys_content = ""
+    user_prompt = last_user_message
+    if messages and messages[0].get('role') == 'system':
+        sys_content = messages[0].get('content', '')
 
-    # Ultra-fast, responsive providers (<2s latency)
-    primary_models = []
-    if Yqcloud:
-        primary_models.append(('gpt-4o-mini', Yqcloud))
-        primary_models.append(('gpt-4', Yqcloud))
-    else:
-        primary_models.append(('gpt-4o-mini', None))
-    
-    fallback_models = []
-    if Yqcloud:
-        fallback_models.append(('auto', Yqcloud))
-    else:
-        fallback_models.append(('default', None))
-
-    def run_race(model_specs):
-        from g4f.client import Client
-        client = Client()
-        errors = []
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(model_specs)))
-        futures = {}
-        for mod, prov in model_specs:
-            if not prov and not mod:
-                continue
-            def fetch(m, p):
-                try:
-                    kwargs = {'model': m, 'messages': messages}
-                    if p:
-                        kwargs['provider'] = p
-                    response = client.chat.completions.create(**kwargs)
-                    content = response.choices[0].message.content.strip()
-                    # Strip any rogue tool_call tags from open models
-                    content = re.sub(r'<tool_call>[\s\S]*?</tool_call>', '', content)
-                    content = re.sub(r'<tool_call>[\s\S]*', '', content)
-                    content = re.sub(r'`?mcp__\w+`?\([^)]*\)', '', content)
-                    content = content.strip()
-                    chinese_count = len(re.findall(r'[\u4e00-\u9fff]', content))
-                    if chinese_count > 30 and 'chinese' not in last_user_message.lower():
-                        raise Exception("Output primarily in Chinese")
-                    elif chinese_count > 0:
-                        content = re.sub(r'[\u4e00-\u9fff]+', '', content).strip()
-                    name = f"{m} ({p.__name__ if hasattr(p, '__name__') else 'Provider'})"
-                    if content:
-                        return content, name
-                    raise Exception("Empty response")
-                except Exception as e:
-                    raise Exception(str(e))
-            futures[executor.submit(fetch, mod, prov)] = (mod, prov)
-            
+    def call_direct_stream():
         try:
-            for future in concurrent.futures.as_completed(futures, timeout=6):
-                try:
-                    res = future.result()
-                    executor.shutdown(wait=False, cancel_futures=True)
-                    return res, None
-                except Exception as e:
-                    errors.append(str(e)[:30])
-        except Exception:
-            pass
-                
-        executor.shutdown(wait=False, cancel_futures=True)
-        return None, errors
+            data = {
+                'prompt': user_prompt,
+                'userId': f'#/chat/{int(time.time()*1000)}',
+                'network': True,
+                'system': sys_content,
+                'withoutContext': False,
+                'stream': True
+            }
+            req = urllib.request.Request(
+                'https://api.binjie.fun/api/generateStream',
+                data=json.dumps(data).encode('utf-8'),
+                headers={
+                    'accept': 'application/json, text/plain, */*',
+                    'content-type': 'application/json',
+                    'origin': 'https://chat9.yqcloud.top',
+                    'referer': 'https://chat9.yqcloud.top/',
+                    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+                }
+            )
+            with urllib.request.urlopen(req, timeout=25) as res:
+                chunks = []
+                for chunk in res:
+                    if chunk:
+                        chunks.append(chunk.decode('utf-8', errors='ignore'))
+                ans = ''.join(chunks).strip()
+                chinese_count = len(re.findall(r'[\u4e00-\u9fff]', ans))
+                if chinese_count > 30 and 'chinese' not in last_user_message.lower():
+                    raise Exception("Output primarily in Chinese")
+                elif chinese_count > 0:
+                    ans = re.sub(r'[\u4e00-\u9fff]+', '', ans).strip()
+                if len(ans) > 15:
+                    return ans, 'Direct-Stream'
+                raise Exception('Empty output')
+        except Exception as e:
+            raise Exception(f"Direct stream error: {e}")
 
-    # 1. Primary race with fast working models
-    res, errors = run_race(primary_models)
-    if res:
-        return res
-    
-    # 2. Secondary fallback race
-    res2, errors2 = run_race(fallback_models)
-    if res2:
-        return res2
-        
-    # If EVERYTHING fails, don't crash. Return a graceful error message in Telugu & English.
+    def call_pollinations():
+        try:
+            msgs = []
+            if sys_content:
+                msgs.append({'role': 'system', 'content': sys_content})
+            msgs.append({'role': 'user', 'content': user_prompt})
+            payload = json.dumps({
+                'messages': msgs,
+                'model': 'openai',
+                'seed': random.randint(1, 999999)
+            }).encode('utf-8')
+            req = urllib.request.Request(
+                'https://text.pollinations.ai/openai',
+                data=payload,
+                headers={
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+                }
+            )
+            with urllib.request.urlopen(req, timeout=25) as res:
+                ans = res.read().decode('utf-8', errors='replace').strip()
+                chinese_count = len(re.findall(r'[\u4e00-\u9fff]', ans))
+                if chinese_count > 30 and 'chinese' not in last_user_message.lower():
+                    raise Exception("Output primarily in Chinese")
+                elif chinese_count > 0:
+                    ans = re.sub(r'[\u4e00-\u9fff]+', '', ans).strip()
+                if len(ans) > 15:
+                    return ans, 'Pollinations'
+                raise Exception('Empty output')
+        except Exception as e:
+            raise Exception(f"Pollinations error: {e}")
+
+    def call_g4f_engine():
+        try:
+            from g4f.client import Client
+            from g4f.Provider import Yqcloud
+            client = Client()
+            response = client.chat.completions.create(
+                model='gpt-4',
+                provider=Yqcloud,
+                messages=messages
+            )
+            content = response.choices[0].message.content.strip()
+            content = re.sub(r'<tool_call>[\s\S]*?</tool_call>', '', content)
+            content = re.sub(r'<tool_call>[\s\S]*', '', content)
+            content = re.sub(r'`?mcp__\w+`?\([^)]*\)', '', content)
+            content = content.strip()
+            chinese_count = len(re.findall(r'[\u4e00-\u9fff]', content))
+            if chinese_count > 30 and 'chinese' not in last_user_message.lower():
+                raise Exception("Output primarily in Chinese")
+            elif chinese_count > 0:
+                content = re.sub(r'[\u4e00-\u9fff]+', '', content).strip()
+            if len(content) > 15:
+                return content, 'g4f-Yqcloud'
+            raise Exception('Empty output')
+        except Exception as e:
+            raise Exception(f"g4f error: {e}")
+
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
+    futures = {
+        executor.submit(call_direct_stream): 'direct',
+        executor.submit(call_pollinations): 'pollinations',
+        executor.submit(call_g4f_engine): 'g4f'
+    }
+    errors = []
+    try:
+        for future in concurrent.futures.as_completed(futures, timeout=28):
+            try:
+                res = future.result()
+                executor.shutdown(wait=False, cancel_futures=True)
+                return res
+            except Exception as e:
+                errors.append(str(e)[:50])
+    except Exception as e:
+        errors.append(f"Timeout: {e}")
+
+    executor.shutdown(wait=False, cancel_futures=True)
+    print(f"[AI_ERROR] All engines failed: {errors}", file=sys.stderr)
+
     safe_error = "నన్ను క్షమించండి, ప్రస్తుతం నా సర్వర్లు చాలా బిజీగా ఉన్నాయి. దయచేసి కాసేపు ఆగి మళ్లీ ప్రయత్నించండి. \n\n*(Sorry, my servers are heavily overloaded right now. Please try again in a moment!)*"
     return safe_error, "System-Fail-Safe"
 
