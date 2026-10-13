@@ -261,23 +261,19 @@ class SwarmHandler(http.server.SimpleHTTPRequestHandler):
             messages_for_ai.append({"role": "user", "content": prompt})
             
             try:
-                print(f"[AGENT] Generating response via g4f online providers...")
+                print(f"[AGENT] Generating response via fast AI engine...")
                 try:
-                    # First try a very fast/reliable provider explicitly if available
-                    response = g4f.ChatCompletion.create(
-                        model=g4f.models.gpt_4o_mini,
-                        messages=messages_for_ai,
-                        provider=g4f.Provider.Blackbox
-                    )
+                    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "api"))
+                    from index import get_ai_response
+                    response_str, model_used = get_ai_response(messages_for_ai, prompt)
                 except Exception as e:
-                    print(f"[WARN] Blackbox failed: {e}. Falling back to default routing...")
-                    # Fallback to automatic routing
+                    print(f"[WARN] Engine fallback: {e}")
+                    import g4f
                     response = g4f.ChatCompletion.create(
-                        model=g4f.models.gpt_4o_mini,
+                        model='gpt-4',
                         messages=messages_for_ai,
                     )
-                
-                response_str = str(response)
+                    response_str = str(response)
                 
                 # 5. Code Execution Agent (Mock/Check)
                 if use_code and "```python" in response_str:
