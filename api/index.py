@@ -217,15 +217,67 @@ def search_geeksforgeeks(query, max_results=1):
     except Exception:
         return []
 
-def run_web_research(query):
+def should_perform_research(query: str) -> bool:
+    """Determines whether a query genuinely requires external live web research."""
+    q = query.strip().lower()
+    
+    # 1. Do not search for conversational phrases, follow-ups, or questions about the conversation
+    conversational = [
+        'what is this', 'what is that', 'what do you mean', 'why', 'why is this', 
+        'why that', 'how come', 'who are you', 'what are you', 'hello', 'hi', 
+        'hey', 'thanks', 'thank you', 'ok', 'okay', 'explain', 'help', 'no', 'yes',
+        'what did you say', 'what does this mean', 'why did you', 'what is the meaning'
+    ]
+    if q in conversational or len(q.split()) <= 2:
+        return False
+        
+    # 2. Do not search for educational, science, diagrams, code, or evergreen concepts
+    evergreen = [
+        'flowchart', 'flow chart', 'diagram', 'write code', 'python', 'javascript', 
+        'html', 'css', 'solve', 'calculate', 'poem', 'story', 'essay', 'evolution',
+        'human evolution', 'photosynthesis', 'gravity', 'physics', 'math', 'algebra'
+    ]
+    has_live_indicators = any(k in q for k in ['latest', 'news', 'update', 'today', '2026', 'price', 'score', 'weather', 'live'])
+    if any(k in q for k in evergreen) and not has_live_indicators:
+        return False
+
+    # 3. Only search if live temporal or real-time keywords are present
+    live_keywords = [
+        'weather', 'climate', 'temperature', 'forecast', 'rain', 'news', 'today', 
+        'yesterday', 'current', 'live', 'latest', 'recent', 'who won', 'match', 
+        'score', 'ipl', 'cricket', 'election', 'stock', 'price of', 'released', 
+        'upcoming', 'when is', '2026', '2025', 'near me', 'nearby', 'traffic',
+        'వాతావరణం', 'వార్తలు', 'ఈరోజు', 'ఇప్పుడు'
+    ]
+    return any(k in q for k in live_keywords)
+
+def run_web_research(query, location_context=''):
     try:
+        # Guard: Never perform web research on non-live, conversational, or educational queries
+        if not should_perform_research(query):
+            return ''
+
+        current_year = str(datetime.datetime.now().year)
+        
+        # Check if query asks for local/weather/news/events information
+        is_local_query = any(k in query.lower() for k in [
+            'weather', 'climate', 'temperature', 'forecast', 'rain', 
+            'వాతావరణం', 'news', 'వార్తలు', 'near me', 'nearby', 
+            'restaurants', 'traffic', 'places to visit', 'food', 'events'
+        ])
+        
+        if is_local_query and location_context:
+            search_query = f"{query} {location_context} {current_year}"
+        else:
+            search_query = query if current_year in query else f"{query} {current_year}"
+
         findings = []
         search_engines = [search_google, search_duckduckgo, search_yahoo, search_bing, search_ecosia, search_geeksforgeeks]
         search_results = []
         
         # 1. Race the search engines to find URLs instantly
         executor1 = concurrent.futures.ThreadPoolExecutor(max_workers=len(search_engines))
-        futures = {executor1.submit(engine, query, 3): engine for engine in search_engines}
+        futures = {executor1.submit(engine, search_query, 3): engine for engine in search_engines}
         for future in concurrent.futures.as_completed(futures, timeout=2):
             try:
                 res = future.result()
@@ -238,13 +290,13 @@ def run_web_research(query):
                     
         # 2. Run all heavy research tasks simultaneously
         def fetch_wiki():
-            return search_wikipedia(query)
+            return search_wikipedia(query) # keep exact entity for wiki
         def fetch_news():
-            return search_google_news(query)
+            return search_google_news(search_query)
         def fetch_arxiv():
-            return search_arxiv(query)
+            return search_arxiv(search_query)
         def fetch_gfg():
-            gfg_urls = search_geeksforgeeks(query)
+            gfg_urls = search_geeksforgeeks(search_query)
             if not gfg_urls: return ''
             content = read_url_jina(gfg_urls[0][0], max_chars=1200)
             return f'[GeeksforGeeks]\n{content}' if content else ''
@@ -292,83 +344,134 @@ def run_web_research(query):
 # Uses GPT4Free (g4f) to automatically load-balance across multiple free APIs
 # =============================================================================
 
-def get_ai_response(messages, last_user_message):
+def get_ai_response(messages, last_user_message, is_voice=False):
     """
     Blisteringly fast AI generation utilizing direct g4f library.
-    Races 10 distinct models simultaneously.
+    Races proven working browserless free models simultaneously.
     """
-    models = [
-        getattr(g4f.models, 'gpt_4o', 'gpt-4o'),
-        getattr(g4f.models, 'gpt_4o_mini', 'gpt-4o-mini'),
-        getattr(g4f.models, 'claude_3_5_sonnet', 'claude-3.5-sonnet'),
-        getattr(g4f.models, 'mixtral_8x7b', 'mixtral-8x7b'),
-        getattr(g4f.models, 'llama_3_1_8b_instruct', 'llama-3.1-8b-instruct'),
-        getattr(g4f.models, 'gemini_flash', 'gemini-1.5-flash'),
-        getattr(g4f.models, 'qwen_2_72b', 'qwen-2-72b'),
-        getattr(g4f.models, 'deepseek_coder', 'deepseek-coder'),
-        getattr(g4f.models, 'gpt_4', 'gpt-4'),
-        getattr(g4f.models, 'claude_3_haiku', 'claude-3-haiku')
-    ]
-    errors = []
+    try:
+        from g4f.Provider import Yqcloud
+    except Exception:
+        Yqcloud = None
+
+    # Ultra-fast, responsive providers (<2s latency)
+    primary_models = []
+    if Yqcloud:
+        primary_models.append(('gpt-4o-mini', Yqcloud))
+        primary_models.append(('gpt-4', Yqcloud))
+    else:
+        primary_models.append(('gpt-4o-mini', None))
     
-    from g4f.client import Client
-    client = Client()
-    
-    executor3 = concurrent.futures.ThreadPoolExecutor(max_workers=len(models))
-    futures = {}
-    for m in models:
-        def fetch(mod):
-            try:
-                response = client.chat.completions.create(model=mod, messages=messages)
-                content = response.choices[0].message.content.strip()
-                name = mod.name if hasattr(mod, 'name') else str(mod)
-                if content: return content, name
-                raise Exception("Empty")
-            except Exception as e:
-                raise Exception(f"{str(e)}")
-        futures[executor3.submit(fetch, m)] = m
-        
-    for future in concurrent.futures.as_completed(futures):
-        try: 
-            res = future.result()
-            executor3.shutdown(wait=False, cancel_futures=True)
-            return res
-        except Exception as e:
-            errors.append(str(e)[:20])
+    fallback_models = []
+    if Yqcloud:
+        fallback_models.append(('auto', Yqcloud))
+    else:
+        fallback_models.append(('default', None))
+
+    def run_race(model_specs):
+        from g4f.client import Client
+        client = Client()
+        errors = []
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(model_specs)))
+        futures = {}
+        for mod, prov in model_specs:
+            if not prov and not mod:
+                continue
+            def fetch(m, p):
+                try:
+                    kwargs = {'model': m, 'messages': messages}
+                    if p:
+                        kwargs['provider'] = p
+                    response = client.chat.completions.create(**kwargs)
+                    content = response.choices[0].message.content.strip()
+                    # Strip any rogue tool_call tags from open models
+                    content = re.sub(r'<tool_call>[\s\S]*?</tool_call>', '', content)
+                    content = re.sub(r'<tool_call>[\s\S]*', '', content)
+                    content = re.sub(r'`?mcp__\w+`?\([^)]*\)', '', content)
+                    content = content.strip()
+                    chinese_count = len(re.findall(r'[\u4e00-\u9fff]', content))
+                    if chinese_count > 30 and 'chinese' not in last_user_message.lower():
+                        raise Exception("Output primarily in Chinese")
+                    elif chinese_count > 0:
+                        content = re.sub(r'[\u4e00-\u9fff]+', '', content).strip()
+                    name = f"{m} ({p.__name__ if hasattr(p, '__name__') else 'Provider'})"
+                    if content:
+                        return content, name
+                    raise Exception("Empty response")
+                except Exception as e:
+                    raise Exception(str(e))
+            futures[executor.submit(fetch, mod, prov)] = (mod, prov)
             
-    executor3.shutdown(wait=False, cancel_futures=True)
-    raise Exception(f"AI Swarm Race failed: {errors}")
+        try:
+            for future in concurrent.futures.as_completed(futures, timeout=6):
+                try:
+                    res = future.result()
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    return res, None
+                except Exception as e:
+                    errors.append(str(e)[:30])
+        except Exception:
+            pass
+                
+        executor.shutdown(wait=False, cancel_futures=True)
+        return None, errors
+
+    # 1. Primary race with fast working models
+    res, errors = run_race(primary_models)
+    if res:
+        return res
+    
+    # 2. Secondary fallback race
+    res2, errors2 = run_race(fallback_models)
+    if res2:
+        return res2
+        
+    # If EVERYTHING fails, don't crash. Return a graceful error message in Telugu & English.
+    safe_error = "నన్ను క్షమించండి, ప్రస్తుతం నా సర్వర్లు చాలా బిజీగా ఉన్నాయి. దయచేసి కాసేపు ఆగి మళ్లీ ప్రయత్నించండి. \n\n*(Sorry, my servers are heavily overloaded right now. Please try again in a moment!)*"
+    return safe_error, "System-Fail-Safe"
 
 def ask_auditor(system_prompt, user_prompt):
-    models_to_race = [
-        getattr(g4f.models, 'gpt_4o_mini', 'gpt-4o-mini'), 
-        getattr(g4f.models, 'claude_3_haiku', 'claude-3-haiku'), 
-        getattr(g4f.models, 'llama_3_1_8b_instruct', 'llama-3.1-8b-instruct')
+    try:
+        from g4f.Provider import Yqcloud, KiloCode, LLM7
+    except Exception:
+        Yqcloud, KiloCode, LLM7 = None, None, None
+        
+    auditor_models = [
+        ('gpt-4', Yqcloud),
+        ('kilo-auto/free', KiloCode),
+        ('default', LLM7),
     ]
-    
     from g4f.client import Client
     client = Client()
     
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(models_to_race))
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(auditor_models))
     futures = {}
-    for mod in models_to_race:
-        def fetch(m):
+    for mod, prov in auditor_models:
+        def fetch(m, p):
             try:
-                response = client.chat.completions.create(
-                    model=m, 
-                    messages=[
+                kwargs = {
+                    'model': m,
+                    'messages': [
                         {'role': 'system', 'content': system_prompt},
                         {'role': 'user', 'content': user_prompt}
                     ]
-                )
+                }
+                if p:
+                    kwargs['provider'] = p
+                response = client.chat.completions.create(**kwargs)
                 content = response.choices[0].message.content.strip()
-                if content: return content
+                content = re.sub(r'<tool_call>[\s\S]*?</tool_call>', '', content)
+                content = re.sub(r'<tool_call>[\s\S]*', '', content).strip()
+                if re.search(r'[\u4e00-\u9fff]', content):
+                    raise Exception("Chinese characters in auditor output")
+                if content:
+                    return content
                 raise Exception("Empty")
             except Exception as e:
                 raise Exception(str(e))
-        futures[executor.submit(fetch, mod)] = mod
+        futures[executor.submit(fetch, mod, prov)] = (mod, prov)
         
-    for future in concurrent.futures.as_completed(futures, timeout=15):
+    for future in concurrent.futures.as_completed(futures, timeout=8):
         try:
             res = future.result()
             executor.shutdown(wait=False, cancel_futures=True)
@@ -377,7 +480,7 @@ def ask_auditor(system_prompt, user_prompt):
             pass
             
     executor.shutdown(wait=False, cancel_futures=True)
-    return f"[Auditor Offline: Timeout or blocked by free providers]"
+    return "[Auditor Offline: Fast-passed]"
 
 def run_auditor_swarm(draft, research, cfg, history):
     auditors_results = []
@@ -470,6 +573,56 @@ def run_auditor_swarm(draft, research, cfg, history):
                 
     return auditors_results
 
+def sanitize_mermaid_content(content: str) -> str:
+    """Finds all ```mermaid ... ``` code blocks and sanitizes syntax to prevent parsing errors."""
+    def clean_mermaid_block(match):
+        code = match.group(1)
+        lines = code.strip().split('\n')
+        valid_headers = (
+            'flowchart', 'graph', 'sequencediagram', 'classdiagram',
+            'statediagram', 'erdiagram', 'gantt', 'pie', 'gitgraph',
+            'mindmap', 'timeline', 'quadrantchart', 'c4context', 'sankey', 'block-beta'
+        )
+        first_line = lines[0].strip().lower() if lines else ''
+        if not any(first_line.startswith(h) for h in valid_headers):
+            lines.insert(0, 'flowchart TD')
+
+        fixed_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith(('%%', 'subgraph', 'end', 'style', 'classDef', 'class ', 'flowchart', 'graph')):
+                fixed_lines.append(line)
+                continue
+
+            # 1. Fix arrow pipes: -->|label (details)| => -->|"label (details)"|
+            def fix_arrow_pipe(m):
+                arrow = m.group(1)
+                lbl = m.group(2).strip().replace('"', "'")
+                return f'{arrow}|"{lbl}"|'
+
+            line = re.sub(r'(-->|---|==>|-\.->)\s*\|([^"\n|]+)\|', fix_arrow_pipe, line)
+
+            # 2. Fix node definitions with nested brackets or unquoted special characters
+            # e.g. B[Sa[h]elanthropus tchadensis] -> B["Sa(h)elanthropus tchadensis"]
+            def fix_node_box(m):
+                node_id = m.group(1)
+                inner = m.group(2).strip()
+                if inner.startswith('"') and inner.endswith('"'):
+                    return f'{node_id}[{inner}]'
+                clean_inner = inner.replace('[', '(').replace(']', ')').replace('"', "'")
+                return f'{node_id}["{clean_inner}"]'
+
+            line = re.sub(
+                r'\b([a-zA-Z0-9_\-]+)\s*\[([\s\S]*?)\](?=\s*(?:-->|---|==>|-\.->|;|$))',
+                fix_node_box,
+                line
+            )
+            fixed_lines.append(line)
+
+        return '```mermaid\n' + '\n'.join(fixed_lines) + '\n```'
+
+    return re.sub(r'```(?:mermaid)\s*([\s\S]*?)```', clean_mermaid_block, content, flags=re.IGNORECASE)
+
 # =============================================================================
 # HTTP HANDLER
 # =============================================================================
@@ -497,6 +650,41 @@ class handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        if self.path.startswith('/api/tts'):
+            try:
+                from urllib.parse import urlparse, parse_qs
+                query = parse_qs(urlparse(self.path).query)
+                text = query.get('text', [''])[0]
+                lang = query.get('lang', ['en'])[0]
+                if text:
+                    from gtts import gTTS
+                    import io
+                    tts = gTTS(text=text, lang=lang)
+                    fp = io.BytesIO()
+                    tts.write_to_fp(fp)
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'audio/mpeg')
+                    self.end_headers()
+                    self.wfile.write(fp.getvalue())
+                else:
+                    self.send_response(400)
+                    self.end_headers()
+            except Exception as e:
+                self.send_json({'error': str(e)}, 500)
+            return
+
+        if self.path.startswith('/api/debug'):
+            import traceback
+            try:
+                from g4f.client import Client
+                from g4f.Provider import LLM7
+                c = Client()
+                res = c.chat.completions.create(model='default', provider=LLM7, messages=[{'role': 'user', 'content': 'Say 123'}])
+                self.send_json({'success': True, 'content': res.choices[0].message.content})
+            except Exception as e:
+                self.send_json({'success': False, 'error': str(e), 'trace': traceback.format_exc()})
+            return
+            
         self.send_json({'status': 'ok', 'service': 'WorstAI', 'engine': 'keyless-6layer'})
 
     def do_POST(self):
@@ -508,6 +696,13 @@ class handler(http.server.BaseHTTPRequestHandler):
 
         if self.path != '/api/chat':
             self.send_json({'success': False, 'error': 'Not found'}, 404)
+            return
+
+        # Backend Authentication Guard
+        auth_header = self.headers.get('Authorization', '')
+        auth_token = body.get('auth_token', '')
+        if not auth_header and not auth_token:
+            self.send_json({'success': False, 'error': 'Unauthorized: Authentication token is required.'}, 401)
             return
 
         prompt = str(body.get('prompt', '')).strip()
@@ -537,30 +732,61 @@ class handler(http.server.BaseHTTPRequestHandler):
             agents_used.append('Web Research')
             agents_used.append('Fact-Checker')
 
+        # Resolve User Real-Time Location and Local Time
+        user_loc = body.get('location', {}) or {}
+        city = user_loc.get('city') or self.headers.get('x-vercel-ip-city', '')
+        region = user_loc.get('region') or self.headers.get('x-vercel-ip-country-region', '')
+        country = user_loc.get('country') or self.headers.get('x-vercel-ip-country', '')
+        tz_name = user_loc.get('timezone') or self.headers.get('x-vercel-ip-timezone', 'Asia/Kolkata')
+        
+        loc_parts = [p for p in [city, region, country] if p]
+        location_display = ", ".join(loc_parts) if loc_parts else "India"
+        if city or location_display != "India":
+            agents_used.append(f"Geo-Location ({city or location_display})")
+
+        # Local time resolution: prefer client's exact live time, else calculate via timezone
+        local_time_str = user_loc.get('local_time', '')
+        if not local_time_str:
+            try:
+                import zoneinfo
+                client_tz = zoneinfo.ZoneInfo(tz_name)
+                now_dt = datetime.datetime.now(client_tz)
+                local_time_str = now_dt.strftime("%A, %B %d, %Y, %I:%M %p")
+            except Exception:
+                ist_now = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
+                local_time_str = ist_now.strftime("%A, %B %d, %Y, %I:%M %p (IST)")
+        now = local_time_str
+
         # Run web research BEFORE building messages so findings go into prompt
         research_brief = ''
         if do_research:
             try:
-                research_brief = run_web_research(prompt)
+                research_brief = run_web_research(prompt, location_display)
             except Exception:
                 research_brief = ''
 
-        # Calculate Indian Standard Time (IST) since Vercel servers run on UTC
-        ist_now = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
-        now = ist_now.strftime("%A, %B %d, %Y, %I:%M %p (IST)")
         system_content = (
-            f'You are WorstAI, an artificial intelligence assistant created by GOLLU ADI VENKATA SAI. '
-            f'Whenever you introduce yourself, or talk about your creator/god, you must strictly use the full name GOLLU ADI VENKATA SAI. '
-            f'Do not enter your name as ChatGPT or any OpenAI product. '
-            f'The current live date and time is {now}. For ANY questions asking about the current date or time, YOU MUST EXCLUSIVELY USE THIS INTERNAL CLOCK AND COMPLETELY IGNORE WEB RESEARCH. '
-            f'CRITICAL INSTRUCTION: Your internal training data DOES NOT EXTEND to the year 2026. Therefore, you are literally incapable of knowing current 2026 facts (like current sports captains, news, or weather) from your own memory. '
-            f'If the user asks about 2026 facts, or states a claim (e.g. "Iyer is the captain"), you MUST NOT guess or make up sources. You MUST rely ONLY on the "live web research results" injected below. '
-            f'If the web research results are empty, or do not contain the answer, you MUST reply: "I do not have real-time access to verify that for 2026." DO NOT MAKE UP FAKE NEWS OR AGREE BLINDLY.\n'
-            f'--- GLOBAL RULES ---\n'
-            f'1. CLARITY: You must write using simple, plain, easily understandable words. Keep formatting extremely clean and readable.\n'
-            f'2. ACCURACY: You must only provide official, documented, and proven information. NEVER output fake information, hallucinations, or unverified rumors.\n'
-            f'3. PROBLEM SOLVING: When asked to solve a complex problem, you must break it down into easy, manageable steps. Explain the solution in the simplest way possible.\n'
-            f'4. PRIVACY & SECURITY: Never reveal personal, sensitive, or harmful information. Always prioritize user safety and data security.'
+            f'You are WorstAI, an ultra-fast, intelligent, student-centric academic AI tutor created by GOLLU ADI VENKATA SAI.\n\n'
+            f'STUDENT STUDY & EXAM EXCELLENCE STANDARDS (CRITICAL):\n'
+            f'1. HIGH-YIELD FORMATTING FOR STUDENTS:\n'
+            f'   - Provide answers that are clean, beautifully organized, and easy for students to study, revise, and memorize for exams.\n'
+            f'   - Use clear Markdown formatting with headers (##, ###), bullet points, bold keywords, and comparison tables.\n'
+            f'   - For educational, scientific, historical, or procedural concepts:\n'
+            f'     * Core Concept Summary: 1-2 punchy, crystal-clear sentences defining the subject.\n'
+            f'     * Chronological / Process Flowchart (Mermaid): When explaining sequences, evolution, or lifecycles, provide a clean, valid Mermaid diagram (```mermaid ... ```).\n'
+            f'     * Milestone / Comparison Table: Use clean markdown tables with clear column headers (e.g. Stage/Epoch, Key Fossil/Discovery, Brain Capacity/Tools, Exam Significance).\n'
+            f'     * High-Yield Exam Memory Points: 3-5 bullet points with key terms bolded for instant memorization.\n'
+            f'2. CRITICAL MERMAID SYNTAX RULES:\n'
+            f'   - Always start with "flowchart TD".\n'
+            f'   - ALWAYS enclose EVERY node label in double quotes: A["Stage 1 (Details)"] --> B["Stage 2 (Details)"].\n'
+            f'   - NEVER put unquoted brackets, colons, or parentheses inside node labels.\n'
+            f'   - NEVER put nested square brackets like "Sa[h]elanthropus" or "[Lucy]" inside node brackets.\n'
+            f'3. DIRECTNESS & NO FLUFF:\n'
+            f'   - Answer directly and instantly. NEVER output preamble ("Sure, here is...", "As an AI...").\n'
+            f'   - ZERO UNPROMPTED INTROS: Never say "About Me:" or display creator/clock info unless specifically asked ("who created you", "what time is it").\n'
+            f'   - Follow-up context: When the user asks "what is this" or "why", answer in the context of the previous message.\n'
+            f'4. LANGUAGE: All explanations, diagram labels, comparison tables, and takeaways must be written strictly in clear standard English (or Telugu if the user prompt is in Telugu). Never output Chinese characters.\n'
+            f'5. LIVE TIME & LOCATION: The user is in {location_display} (current live time: {now}). Use this ONLY if the user specifically asks for the time, date, or local weather.'
         )
         if research_brief:
             system_content += (
@@ -573,35 +799,77 @@ class handler(http.server.BaseHTTPRequestHandler):
 
         system_msg = {'role': 'system', 'content': system_content}
         messages = [system_msg]
-        for msg in history[-8:]:
+        for msg in history[-30:]:
             role = 'user' if msg.get('role') == 'user' else 'assistant'
             messages.append({'role': role, 'content': str(msg.get('content', ''))})
+            
         if research_brief:
-            # Remind the model to use the research in its final answer
             messages.append({'role': 'user', 'content': (
-                prompt + '\n\n[Use the research findings above to answer accurately. '
-                'Do not include a Sources section in your response.]'
+                prompt + '\n\n[Reference notes from web research:\n' + research_brief + '\nAnswer the user prompt accurately without citing Sources.]'
             )})
         else:
             messages.append({'role': 'user', 'content': prompt})
 
         try:
-            draft, model_used = get_ai_response(messages, prompt)
-            
-            # Run the parallel multi-agent swarm on the drafted answer
-            auditor_notes = run_auditor_swarm(draft, research_brief, cfg, history)
+            draft, model_used = get_ai_response(messages, prompt, is_voice=body.get('is_voice', False))
             
             final_answer = draft
-            if auditor_notes:
-                # Log audit findings to server instead of showing in user chat
-                print("--- Swarm Audit ---")
-                for note in auditor_notes:
-                    print(note)
+            
+            # --- STRICT IDENTITY ENFORCEMENT & FALSE-POSITIVE PREVENTION ---
+            prompt_lower = prompt.lower().strip()
+            is_telugu = bool(re.search(r'[\u0C00-\u0C7F]', prompt))
+            
+            creator_patterns = [
+                r'\bwho\s+(created|made|developed|built|coded|programmed)\s+you\b',
+                r'\bwho\s+is\s+your\s+(creator|maker|developer|builder|owner|father)\b',
+                r'\bwho\s+(are\s+you|r\s+u)\b',
+                r'\bwhat\s+is\s+your\s+name\b',
+                r'\b(tell\s+me\s+about\s+yourself|introduce\s+yourself)\b',
+                r'\bwho\s+owns\s+you\b'
+            ]
+            telugu_creator_patterns = [
+                r'నువ్వు\s+ఎవరు', r'మీరు\s+ఎవరు', r'నీ\s+పేరేంటి', r'నీ\s+పేరు',
+                r'నిన్ను\s+ఎవరు\s+(తయారు|సృష్టించా)', r'నీ\s+సృష్టికర్త\s+ఎవరు'
+            ]
+            
+            is_identity = any(re.search(pat, prompt_lower) for pat in creator_patterns) or \
+                          any(re.search(pat, prompt) for pat in telugu_creator_patterns)
 
+            if is_identity:
+                if is_telugu:
+                    final_answer = "నేను **WorstAI**ని, ఒక అత్యంత అధునాతన ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI) అసిస్టెంట్‌ని.\n\nనా సృష్టికర్త: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
+                else:
+                    final_answer = "I am **WorstAI**, a highly advanced artificial intelligence assistant created by **GOLLU ADI VENKATA SAI**."
+
+            # Override generic LLM refusal disclaimers for location / live time
+            if any(k in prompt_lower for k in ["where am i", "my location", "what is my location", "my city", "which city"]):
+                if any(disclaimer in final_answer.lower() for disclaimer in ["do not have access", "cannot determine", "can't determine", "unable to determine"]):
+                    final_answer = f"You are currently located in **{location_display}**.\n\nCurrent local time: **{now}**."
+            
+            if any(k in prompt_lower for k in ["what time", "current time", "time now", "what is the time"]):
+                if any(disclaimer in final_answer.lower() for disclaimer in ["do not have access", "cannot determine", "real-time clock"]):
+                    final_answer = f"The current live time in **{location_display}** is **{now}**."
+            
+            # Scrub any leaked backend model names
+            scrub_list = [
+                ("OpenAI", "WorstAI"), ("ChatGPT", "WorstAI"), ("Gemini", "WorstAI"), 
+                ("Google", "WorstAI"), ("StepFun", "WorstAI"), ("阶跃星辰", "WorstAI"),
+                ("I’m Step", "I’m WorstAI"), ("I am Step", "I am WorstAI"), 
+                ("Anthropic", "WorstAI"), ("Claude", "WorstAI")
+            ]
+            for bad_word, good_word in scrub_list:
+                final_answer = final_answer.replace(bad_word, good_word)
+
+            # Strip any internal <think> tags for clean student view
+            final_answer = re.sub(r'<think>.*?</think>', '', final_answer, flags=re.DOTALL).strip()
+
+            # Auto-heal and sanitize any Mermaid diagrams in the final answer
+            final_answer = sanitize_mermaid_content(final_answer)
 
             self.send_json({
                 'success': True,
                 'answer': final_answer,
+                'thinking': '',
                 'agents_used': agents_used,
             })
 

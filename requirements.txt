@@ -1,2 +1,3 @@
 googlesearch-python
 g4f
+gTTS

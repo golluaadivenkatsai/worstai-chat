@@ -38,8 +38,42 @@ def save_sessions():
     with open(SESSIONS_FILE, "w", encoding="utf-8") as f:
         json.dump(SESSIONS, f, indent=2)
 
+def should_perform_research(query: str) -> bool:
+    """Determines whether a query genuinely requires external live web research."""
+    q = query.strip().lower()
+    
+    # 1. Do not search for conversational phrases or follow-ups
+    conversational = [
+        'what is this', 'what is that', 'what do you mean', 'why', 'why is this', 
+        'why that', 'how come', 'who are you', 'what are you', 'hello', 'hi', 
+        'hey', 'thanks', 'thank you', 'ok', 'okay', 'explain', 'help', 'no', 'yes'
+    ]
+    if q in conversational or len(q.split()) <= 2:
+        return False
+        
+    # 2. Do not search for educational, science, diagrams, code, or evergreen concepts
+    evergreen = [
+        'flowchart', 'flow chart', 'diagram', 'write code', 'python', 'javascript', 
+        'html', 'css', 'solve', 'calculate', 'poem', 'story', 'essay', 'evolution',
+        'human evolution', 'photosynthesis', 'gravity', 'physics', 'math'
+    ]
+    has_live_indicators = any(k in q for k in ['latest', 'news', 'update', 'today', '2026', 'price', 'score', 'weather', 'live'])
+    if any(k in q for k in evergreen) and not has_live_indicators:
+        return False
+
+    # 3. Only search if live temporal or real-time keywords are present
+    live_keywords = [
+        'weather', 'climate', 'temperature', 'forecast', 'rain', 'news', 'today', 
+        'yesterday', 'current', 'live', 'latest', 'recent', 'who won', 'match', 
+        'score', 'ipl', 'cricket', 'election', 'stock', 'price of', 'released', 
+        'upcoming', 'when is', '2026', '2025'
+    ]
+    return any(k in q for k in live_keywords)
+
 def perform_research(query):
     """Simple Web Research Agent: Queries Wikipedia API for context."""
+    if not should_perform_research(query):
+        return "No external research found."
     try:
         # Search for the query
         search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={urllib.parse.quote(query)}&utf8=&format=json"
