@@ -416,7 +416,14 @@ def get_ai_response(messages, last_user_message, is_voice=False):
                 }
             )
             with urllib.request.urlopen(req, timeout=25) as res:
-                ans = res.read().decode('utf-8', errors='replace').strip()
+                raw_text = res.read().decode('utf-8', errors='replace').strip()
+                ans = raw_text
+                try:
+                    p = json.loads(raw_text)
+                    if isinstance(p, dict) and 'choices' in p and p['choices']:
+                        ans = p['choices'][0].get('message', {}).get('content', ans).strip()
+                except Exception:
+                    pass
                 chinese_count = len(re.findall(r'[\u4e00-\u9fff]', ans))
                 if chinese_count > 30 and 'chinese' not in last_user_message.lower():
                     raise Exception("Output primarily in Chinese")
