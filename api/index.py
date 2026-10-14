@@ -144,7 +144,15 @@ def search_wikipedia(query, max_chars=3500):
             items = data.get('query', {}).get('search', [])
             if not items:
                 return ''
-            top_title = items[0].get('title')
+            top_title = ''
+            for it in items:
+                t = it.get('title', '')
+                t_low = t.lower()
+                if 'disambiguation' not in t_low and 'list of' not in t_low:
+                    top_title = t
+                    break
+            if not top_title:
+                top_title = items[0].get('title', '')
 
         ext_url = (
             f'https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&titles='
@@ -157,6 +165,8 @@ def search_wikipedia(query, max_chars=3500):
             for pid, pdata in pages.items():
                 extract = pdata.get('extract', '')
                 if extract:
+                    if 'may refer to:' in extract[:300].lower():
+                        continue
                     return extract[:max_chars]
         return ''
     except Exception:
@@ -1692,6 +1702,72 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         return None
 
     # Deep Dynamic Academic Synthesizer (Clean, Concise & Accurate)
+    prompt_raw = prompt.strip()
+    q_low = prompt_raw.lower()
+
+    # 1. Identity & God Clarification Guard (Never scrape Wikipedia for AI Creator/God queries)
+    if any(re.search(pat, q_low) for pat in [
+        r'\bgod\s+means\s+who\s+(created?|made|built|programmed)\s+you\b',
+        r'\bgod\s+means\s+who\s+(create|created?|made)\b',
+        r'\bmeans\s+who\s+created?\s+you\b'
+    ]):
+        if is_telugu:
+            return "ఆ కోణంలో చూస్తే, నన్ను సృష్టించి, ప్రాణం పోసి, అభివృద్ధి చేసిన నా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
+        return "In that sense, my creator, architect, and developer is **GOLLU ADI VENKATA SAI**. He designed, engineered, and brought **WorstAI** to life."
+
+    if any(re.search(pat, q_low) for pat in [
+        r'\bwho\s+is\s+your\s+god\b',
+        r'\bdo\s+you\s+(have|believe\s+in)\s+(a\s+)?god\b',
+        r'\bwho\s+is\s+god\s+(to\s+you|for\s+you)\b',
+        r'\bis\s+god\s+your\s+creator\b',
+        r'\bwhat\s+is\s+your\s+religion\b',
+    ]):
+        if is_telugu:
+            return "ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI)గా నాకు మతం లేదా దేవుడు ఉండరు.\n\nకానీ నన్ను సృష్టించి, ప్రాణం పోసి, అభివృద్ధి చేసిన నా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
+        return "As an artificial intelligence, I don't follow any religion or have a spiritual god.\n\nHowever, if you are asking about who created and brought me to life, my creator, architect, and developer is **GOLLU ADI VENKATA SAI**."
+
+    if any(re.search(pat, q_low) for pat in [
+        r'\bwho\s+(created|made|developed|built|coded|programmed|invented|designed|trained)\s+you\b',
+        r'\bwho\s+is\s+your\s+(creator|maker|developer|builder|owner|father|master|boss|author|founder)\b',
+        r'\bwho\s+(created|made|developed|built|founded)\s+worstai\b',
+        r'\bwho\s+owns\s+you\b',
+        r'\bwho\s+is\s+the\s+creator\s+of\s+worstai\b',
+        r'\bwho\s+gave\s+(you\s+birth|birth\s+to\s+you)\b',
+        r'\bwho\s+(are\s+you|r\s+u)\b',
+        r'\bwhat\s+is\s+your\s+name\b',
+        r'\b(tell\s+me\s+about\s+yourself|introduce\s+yourself)\b'
+    ]):
+        if is_telugu:
+            return "నేను **WorstAI**ని, ఒక అత్యంత అధునాతన ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI) అసిస్టెంట్‌ని.\n\nనా సృష్టికర్త: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
+        return "I am **WorstAI**, a highly advanced artificial intelligence assistant created and developed by **GOLLU ADI VENKATA SAI**."
+
+    if any(re.search(pat, q_low) for pat in [
+        r'\bwho\s+is\s+(gollu\s+adi\s+venkata\s+sai|adi\s+venkata\s+sai|gollu\s+adi|adi\s+sai)\b',
+        r'\bwho\s+is\s+adi\b',
+        r'\btell\s+me\s+about\s+(gollu\s+adi\s+venkata\s+sai|adi\s+venkata\s+sai|adi)\b'
+    ]):
+        if is_telugu:
+            return "**గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)** గారు **WorstAI**ని అభివృద్ధి చేసిన సాఫ్ట్‌వేర్ డెవలపర్, ఇంజనీర్ మరియు AI ఆర్కిటెక్ట్."
+        return "**GOLLU ADI VENKATA SAI** is the software developer, engineer, and creator of **WorstAI**."
+
+    # 2. Conversational Small-Talk Guard (Never build an exam paper for simple greetings)
+    pure_greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening', 'good night', 'namaste', 'greetings', 'yo', 'sup']
+    clean_words = q_low.rstrip('?!. ').split()
+    if q_low in pure_greetings or (len(clean_words) <= 2 and clean_words and clean_words[0] in pure_greetings):
+        if is_telugu:
+            return "నమస్కారం! నేను **WorstAI**ని. మీకు చదువులో లేదా ఇతర విషయాల గురించి ఏవైనా సందేహాలు ఉంటే అడగండి, నేను సహాయం చేస్తాను!"
+        return "Hello! I am **WorstAI**, your fast AI study and knowledge assistant created by **GOLLU ADI VENKATA SAI**. How can I help you today?"
+
+    if any(re.search(pat, q_low) for pat in [r'\bhow\s+are\s+you\b', r'\bhow\s+r\s+u\b', r'\bhow\s+do\s+you\s+do\b']):
+        return "I'm doing great and ready to assist! How can I help you with your learning, concepts, or questions today?"
+
+    if any(re.search(pat, q_low) for pat in [r'\bthank(s|\s+you)\b', r'\bthx\b', r'\btq\b']):
+        return "You're very welcome! If you have any more questions or topics you'd like to explore, feel free to ask anytime."
+
+    if any(re.search(pat, q_low) for pat in [r'\b(bye|goodbye|see\s+you|cya)\b']):
+        return "Goodbye! Best of luck with your studies, and feel free to return whenever you have questions!"
+
+    # 3. Dynamic Search for Academic Topics
     gfg_snippets = search_gfg_snippets(prompt)
     wiki_info = search_wikipedia(prompt)
 
@@ -1720,14 +1796,28 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             f"It defines standard principles, mathematical bounds, and operational mechanisms used to design robust systems."
         )
 
+    # Academic sentence filter (excludes noisy movie lists, CSV artifacts, and disambiguation lines)
+    def is_clean_academic_sent(s):
+        s_clean = s.strip()
+        if len(s_clean) < 25 or len(s_clean) > 160:
+            return False
+        s_l = s_clean.lower()
+        if any(bad in s_l for bad in ['may refer to', 'refer to:', 'disambiguation', 'see also', 'retrieved from', 'external link', 'isbn', 'doi:']):
+            return False
+        if re.search(r'\d{3,4},[A-Z]', s_clean) or re.search(r'\(\d{4}\)', s_clean):
+            return False
+        if s_clean.count(',') >= 4 or s_clean.count('"') >= 3:
+            return False
+        return True
+
     # 3-4 simple, high-yield takeaways
     exam_points = []
     if gfg_snippets:
         for s in gfg_snippets[1:5]:
-            if s not in core_summary and len(exam_points) < 4:
+            if s not in core_summary and len(exam_points) < 4 and is_clean_academic_sent(s):
                 exam_points.append(f"- **Core Principle**: {s.rstrip('. ')}.")
     if len(exam_points) < 3 and clean_wiki:
-        sents = [s.strip() for s in re.split(r'\.\s+', clean_wiki) if 30 < len(s.strip()) < 140]
+        sents = [s.strip() for s in re.split(r'\.\s+', clean_wiki) if is_clean_academic_sent(s)]
         for s in sents[1:5]:
             if len(exam_points) < 4:
                 exam_points.append(f"- **Key Takeaway**: {s}.")
@@ -2242,34 +2332,152 @@ class handler(http.server.BaseHTTPRequestHandler):
                         resolved_query = last_topic
                         break
 
-        # --- 1. STRICT CREATOR IDENTITY ENFORCEMENT (Instant 0.0001s) ---
+        # --- 1. STRICT CREATOR, IDENTITY, GOD & CONCIERGE ENFORCEMENT (Instant 0.0001s) ---
         prompt_lower = prompt.lower().strip()
         is_telugu = bool(re.search(r'[\u0C00-\u0C7F]', prompt))
-        creator_patterns = [
-            r'\bwho\s+(created|made|developed|built|coded|programmed)\s+you\b',
-            r'\bwho\s+is\s+your\s+(creator|maker|developer|builder|owner|father)\b',
-            r'\bwho\s+(are\s+you|r\s+u)\b',
-            r'\bwhat\s+is\s+your\s+name\b',
-            r'\b(tell\s+me\s+about\s+yourself|introduce\s+yourself)\b',
-            r'\bwho\s+owns\s+you\b'
-        ]
-        telugu_creator_patterns = [
-            r'నువ్వు\s+ఎవరు', r'మీరు\s+ఎవరు', r'నీ\s+పేరేంటి', r'నీ\s+పేరు',
-            r'నిన్ను\s+ఎవరు\s+(తయారు|సృష్టించా)', r'నీ\s+సృష్టికర్త\s+ఎవరు'
-        ]
-        is_identity = any(re.search(pat, prompt_lower) for pat in creator_patterns) or \
-                      any(re.search(pat, prompt) for pat in telugu_creator_patterns)
 
-        if is_identity:
+        # A. Clarification: "God means who create you"
+        god_clarification_patterns = [
+            r'\bgod\s+means\s+who\s+(created?|made|built|programmed)\s+you\b',
+            r'\bgod\s+means\s+who\s+(create|created?|made)\b',
+            r'\bmeans\s+who\s+created?\s+you\b',
+            r'\bwho\s+create\s+you\b',
+        ]
+        if any(re.search(pat, prompt_lower) for pat in god_clarification_patterns):
             if is_telugu:
-                ident_ans = "నేను **WorstAI**ని, ఒక అత్యంత అధునాతన ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI) అసిస్టెంట్‌ని.\n\nనా సృష్టికర్త: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
+                ident_ans = "ఆ కోణంలో చూస్తే, నన్ను సృష్టించి, ప్రాణం పోసి, అభివృద్ధి చేసిన నా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
             else:
-                ident_ans = "I am **WorstAI**, a highly advanced artificial intelligence assistant created by **GOLLU ADI VENKATA SAI**."
+                ident_ans = "In that sense, my creator, architect, and developer is **GOLLU ADI VENKATA SAI**. He designed, engineered, and brought **WorstAI** to life."
             self.send_json({
                 'success': True,
                 'answer': ident_ans,
                 'thinking': '',
                 'agents_used': ['Identity Core']
+            })
+            return
+
+        # B. General God & Religion Inquiries
+        god_general_patterns = [
+            r'\bwho\s+is\s+your\s+god\b',
+            r'\bdo\s+you\s+(have|believe\s+in)\s+(a\s+)?god\b',
+            r'\bwho\s+is\s+god\s+(to\s+you|for\s+you)\b',
+            r'\bis\s+god\s+your\s+creator\b',
+            r'\bwhat\s+is\s+your\s+religion\b',
+            r'\bdo\s+you\s+pray\b',
+        ]
+        telugu_god_patterns = [
+            r'నీ\s+దేవుడు\s+ఎవరు',
+            r'నీకు\s+దేవుడు\s+ఉన్నాడా',
+            r'దేవుడు\s+అంటే\s+నిన్ను\s+(సృష్టించి|తయారు|చేసిన)',
+            r'దేవుడు\s+ఎవరు'
+        ]
+        if any(re.search(pat, prompt_lower) for pat in god_general_patterns) or any(re.search(pat, prompt) for pat in telugu_god_patterns):
+            if is_telugu:
+                ident_ans = "ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI)గా నాకు మతం లేదా దేవుడు ఉండరు.\n\nకానీ నన్ను సృష్టించి, ప్రాణం పోసి, అభివృద్ధి చేసిన నా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
+            else:
+                ident_ans = "As an artificial intelligence, I don't follow any religion or have a spiritual god.\n\nHowever, if you are asking about who created and brought me to life, my creator, architect, and developer is **GOLLU ADI VENKATA SAI**."
+            self.send_json({
+                'success': True,
+                'answer': ident_ans,
+                'thinking': '',
+                'agents_used': ['Identity Core']
+            })
+            return
+
+        # C. Direct Creator & Identity Inquiries
+        creator_patterns = [
+            r'\bwho\s+(created|made|developed|built|coded|programmed|invented|designed|trained)\s+you\b',
+            r'\bwho\s+is\s+your\s+(creator|maker|developer|builder|owner|father|master|boss|author|founder)\b',
+            r'\bwho\s+(created|made|developed|built|founded)\s+worstai\b',
+            r'\bwho\s+owns\s+you\b',
+            r'\bwho\s+is\s+the\s+creator\s+of\s+worstai\b',
+            r'\bwho\s+gave\s+(you\s+birth|birth\s+to\s+you)\b',
+            r'\bwho\s+(are\s+you|r\s+u)\b',
+            r'\bwhat\s+is\s+your\s+name\b',
+            r'\b(tell\s+me\s+about\s+yourself|introduce\s+yourself)\b',
+            r'\bwhat\s+can\s+you\s+do\b'
+        ]
+        telugu_creator_patterns = [
+            r'నువ్వు\s+ఎవరు', r'మీరు\s+ఎవరు', r'నీ\s+పేరేంటి', r'నీ\s+పేరు',
+            r'నిన్ను\s+ఎవరు\s+(తయారు|సృష్టించా|రూపొందించా)', r'నీ\s+సృష్టికర్త\s+ఎవరు',
+            r'వర్స్ట్\s*ఏఐ\s*ని\s*ఎవరు'
+        ]
+        if any(re.search(pat, prompt_lower) for pat in creator_patterns) or any(re.search(pat, prompt) for pat in telugu_creator_patterns):
+            if is_telugu:
+                ident_ans = "నేను **WorstAI**ని, ఒక అత్యంత అధునాతన ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI) అసిస్టెంట్‌ని.\n\nనా సృష్టికర్త: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
+            else:
+                ident_ans = "I am **WorstAI**, a highly advanced artificial intelligence assistant created and developed by **GOLLU ADI VENKATA SAI**."
+            self.send_json({
+                'success': True,
+                'answer': ident_ans,
+                'thinking': '',
+                'agents_used': ['Identity Core']
+            })
+            return
+
+        # D. Creator Person Lookups ("who is gollu adi venkata sai", "who is adi")
+        adi_patterns = [
+            r'\bwho\s+is\s+(gollu\s+adi\s+venkata\s+sai|adi\s+venkata\s+sai|gollu\s+adi|adi\s+sai)\b',
+            r'\bwho\s+is\s+adi\b',
+            r'\btell\s+me\s+about\s+(gollu\s+adi\s+venkata\s+sai|adi\s+venkata\s+sai|adi)\b'
+        ]
+        telugu_adi_patterns = [
+            r'గొల్లు\s+ఆది\s+వెంకట\s+సాయి\s+ఎవరు',
+            r'ఆది\s+ఎవరు'
+        ]
+        if any(re.search(pat, prompt_lower) for pat in adi_patterns) or any(re.search(pat, prompt) for pat in telugu_adi_patterns):
+            if is_telugu:
+                ident_ans = "**గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)** గారు **WorstAI**ని అభివృద్ధి చేసిన సాఫ్ట్‌వేర్ డెవలపర్, ఇంజనీర్ మరియు AI ఆర్కిటెక్ట్."
+            else:
+                ident_ans = "**GOLLU ADI VENKATA SAI** is the software developer, engineer, and creator of **WorstAI**."
+            self.send_json({
+                'success': True,
+                'answer': ident_ans,
+                'thinking': '',
+                'agents_used': ['Identity Core']
+            })
+            return
+
+        # E. Pure Greetings & Conversational Small Talk
+        pure_greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening', 'good night', 'namaste', 'greetings', 'yo', 'sup']
+        clean_words = prompt_lower.rstrip('?!. ').split()
+        if prompt_lower in pure_greetings or (len(clean_words) <= 2 and clean_words and clean_words[0] in pure_greetings) or any(k in prompt for k in ['నమస్కారం', 'హలో', 'హాయ్']):
+            if is_telugu:
+                greet_ans = "నమస్కారం! నేను **WorstAI**ని. మీకు చదువులో లేదా ఇతర విషయాల గురించి ఏవైనా సందేహాలు ఉంటే అడగండి, నేను సహాయం చేస్తాను!"
+            else:
+                greet_ans = "Hello! I am **WorstAI**, your fast AI study and knowledge assistant created by **GOLLU ADI VENKATA SAI**. How can I help you today?"
+            self.send_json({
+                'success': True,
+                'answer': greet_ans,
+                'thinking': '',
+                'agents_used': ['WorstAI-Concierge']
+            })
+            return
+
+        if any(re.search(pat, prompt_lower) for pat in [r'\bhow\s+are\s+you\b', r'\bhow\s+r\s+u\b', r'\bhow\s+do\s+you\s+do\b', r'\bhow\s+are\s+things\b']):
+            self.send_json({
+                'success': True,
+                'answer': "I'm doing great and ready to assist! How can I help you with your learning, concepts, or questions today?",
+                'thinking': '',
+                'agents_used': ['WorstAI-Concierge']
+            })
+            return
+
+        if any(re.search(pat, prompt_lower) for pat in [r'\bthank(s|\s+you)\b', r'\bthx\b', r'\btq\b', r'\bthank\s+u\b']):
+            self.send_json({
+                'success': True,
+                'answer': "You're very welcome! If you have any more questions or topics you'd like to explore, feel free to ask anytime.",
+                'thinking': '',
+                'agents_used': ['WorstAI-Concierge']
+            })
+            return
+
+        if any(re.search(pat, prompt_lower) for pat in [r'\b(bye|goodbye|see\s+you|cya)\b']):
+            self.send_json({
+                'success': True,
+                'answer': "Goodbye! Best of luck with your studies, and feel free to return whenever you have questions!",
+                'thinking': '',
+                'agents_used': ['WorstAI-Concierge']
             })
             return
 
