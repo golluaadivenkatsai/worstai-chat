@@ -649,18 +649,57 @@
     
     /* Typography & Markdown */
     .content h1, .content h2, .content h3 { font-family: 'Outfit', sans-serif; color: var(--text); font-weight: 700; margin-top: 1.2em; margin-bottom: 0.6em; line-height: 1.2; letter-spacing: -0.02em; }
-    .content h1 { font-size: 1.7rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px; }
-    .content h2 { font-size: 1.35rem; }
-    .content h3 { font-size: 1.1rem; }
-    .content p { margin-bottom: 1em; line-height: 1.65; }
+    .content h1 { font-size: 1.65rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; }
+    .content h2 { font-size: 1.3rem; color: #f4f4f6; }
+    .content h3 { font-size: 1.08rem; color: #e4e4e7; }
+    .content p { margin-bottom: 1em; line-height: 1.65; color: #d4d4d8; font-size: 0.98rem; }
     .content strong { font-weight: 600; color: #ffffff; }
-    .content ul, .content ol { margin-bottom: 1em; padding-left: 1.5em; }
-    .content li { margin-bottom: 0.4em; }
-    .content table { width: 100%; border-collapse: collapse; margin-bottom: 1.5em; font-size: 0.95em; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; }
-    .content th, .content td { padding: 12px 16px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .content th { background: rgba(255,255,255,0.04); font-weight: 600; color: var(--text); }
-    .content blockquote { border-left: 3px solid #71717a; padding: 12px 20px; margin: 1.2em 0; color: var(--text-muted); font-style: italic; background: rgba(255,255,255,0.02); border-radius: 0 12px 12px 0; }
-    .content code { background-color: rgba(255,255,255,0.06); padding: 3px 6px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: #e4e4e7; }
+    .content ul, .content ol { margin-bottom: 1em; padding-left: 1.4em; }
+    .content li { margin-bottom: 0.45em; line-height: 1.6; color: #d4d4d8; }
+    .content table { 
+      width: 100%; 
+      border-collapse: separate; 
+      border-spacing: 0; 
+      margin: 1.2em 0 1.6em 0; 
+      font-size: 0.92rem; 
+      border: 1px solid rgba(255, 255, 255, 0.12); 
+      border-radius: 14px; 
+      overflow: hidden; 
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35); 
+      background: rgba(14, 15, 22, 0.6); 
+    }
+    .content th, .content td { 
+      padding: 11px 15px; 
+      text-align: left; 
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07); 
+      line-height: 1.5; 
+    }
+    .content th { 
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.22) 0%, rgba(124, 58, 237, 0.15) 100%); 
+      font-weight: 700; 
+      color: #ffffff; 
+      font-size: 0.82rem; 
+      text-transform: uppercase; 
+      letter-spacing: 0.05em; 
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14); 
+    }
+    .content tr:nth-child(even) td { 
+      background: rgba(255, 255, 255, 0.02); 
+    }
+    .content tr:last-child td { 
+      border-bottom: none; 
+    }
+    .content tr:hover td { 
+      background: rgba(59, 130, 246, 0.05); 
+      transition: background 0.15s ease; 
+    }
+    .content hr { 
+      border: none; 
+      border-top: 1px solid rgba(255, 255, 255, 0.1); 
+      margin: 1.4em 0; 
+    }
+    .content blockquote { border-left: 3px solid #3b82f6; padding: 12px 20px; margin: 1.2em 0; color: #a1a1aa; font-style: italic; background: rgba(59, 130, 246, 0.04); border-radius: 0 12px 12px 0; }
+    .content code { background-color: rgba(255,255,255,0.08); padding: 3px 6px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.88em; color: #93c5fd; }
     .content pre { background-color: #0b0c10; padding: 18px; border-radius: 14px; overflow-x: auto; margin-bottom: 1.5em; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.07); }
     .content pre code { background-color: transparent; padding: 0; color: inherit; font-size: 0.88em; }
     .content a { color: #60a5fa; text-decoration: none; }
@@ -1815,11 +1854,44 @@
           }
         }
       } else {
-        authScreen.style.display = 'flex';
-        clearTimeout(inactivityTimer);
-        clearInterval(inactivityCheckInterval);
+        // High-Concurrency Support: check if user is operating in guest mode
+        if (localStorage.getItem('worstai_guest_mode') === 'true') {
+          authScreen.style.display = 'none';
+          if (userEmailDisplay) {
+            userEmailDisplay.innerText = 'Guest Student';
+            userAvatar.innerText = '👤';
+          }
+          const signOutBtn = document.querySelector('.sign-out-btn');
+          if (signOutBtn) {
+            signOutBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Sign In';
+            signOutBtn.onclick = () => { authScreen.style.display = 'flex'; };
+          }
+        } else {
+          authScreen.style.display = 'flex';
+          clearTimeout(inactivityTimer);
+          clearInterval(inactivityCheckInterval);
+        }
       }
     });
+
+    function continueAsGuest() {
+      localStorage.setItem('worstai_guest_mode', 'true');
+      let guestId = localStorage.getItem('worstai_guest_id');
+      if (!guestId) {
+        guestId = 'guest_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+        localStorage.setItem('worstai_guest_id', guestId);
+      }
+      authScreen.style.display = 'none';
+      if (userEmailDisplay) {
+        userEmailDisplay.innerText = 'Guest Student';
+        userAvatar.innerText = '👤';
+      }
+      const signOutBtn = document.querySelector('.sign-out-btn');
+      if (signOutBtn) {
+        signOutBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Sign In';
+        signOutBtn.onclick = () => { authScreen.style.display = 'flex'; };
+      }
+    }
 
     // 1. Passwordless Email Link / OTP Sign-In
     async function sendLoginEmailLink() {
@@ -1876,6 +1948,9 @@
       auth.signInWithPopup(provider).catch(err => {
         if (err.code === 'auth/popup-blocked') {
           auth.signInWithRedirect(provider);
+        } else if (err.code === 'auth/unauthorized-domain') {
+          const currentHost = window.location.hostname;
+          showAuthError(`Firebase Error: '${currentHost}' is not in Firebase Authorized Domains. Add '${currentHost}' in Firebase Console > Authentication > Settings > Authorized Domains.`);
         } else {
           showAuthError(err.message);
         }
@@ -1955,10 +2030,12 @@
       clearTimeout(inactivityTimer);
       clearInterval(inactivityCheckInterval);
       localStorage.removeItem(LAST_ACTIVE_KEY);
+      localStorage.removeItem('worstai_guest_mode');
       auth.signOut().then(() => {
         authEmail.value = '';
         authPassword.value = '';
         clearAuthMessages();
+        authScreen.style.display = 'flex';
         if (reason) {
           showAuthError(reason);
         }
@@ -2304,10 +2381,8 @@
 
     let lastInputWasVoice = false;
     async function sendMessage() {
-      if (!auth.currentUser) {
-        authScreen.style.display = 'flex';
-        showAuthError("Security Guard: Please authenticate to send messages.");
-        return;
+      if (!auth.currentUser && !localStorage.getItem('worstai_guest_mode')) {
+        localStorage.setItem('worstai_guest_mode', 'true');
       }
       
       const prompt = inputField.value.trim();
@@ -2440,12 +2515,16 @@
           if (!success) {
             // Fall through to server backend
             let idToken = '';
-            try { if (auth.currentUser) idToken = await auth.currentUser.getIdToken(); } catch(e){}
+            if (auth.currentUser) {
+              try { idToken = await auth.currentUser.getIdToken(); } catch(e){}
+            } else {
+              idToken = localStorage.getItem('worstai_guest_id') || ('guest_' + Date.now());
+            }
             const res = await fetch('/api/chat', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': idToken ? `Bearer ${idToken}` : ''
+                'Authorization': idToken ? (idToken.startsWith('guest_') ? idToken : `Bearer ${idToken}`) : 'guest'
               },
               body: JSON.stringify({
                 prompt: prompt,
@@ -2469,12 +2548,16 @@
         } else {
           // No Gemini key stored — go straight to server backend
           let idToken = '';
-          try { if (auth.currentUser) idToken = await auth.currentUser.getIdToken(); } catch(e){}
+          if (auth.currentUser) {
+            try { idToken = await auth.currentUser.getIdToken(); } catch(e){}
+          } else {
+            idToken = localStorage.getItem('worstai_guest_id') || ('guest_' + Date.now());
+          }
           const res = await fetch('/api/chat', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': idToken ? `Bearer ${idToken}` : ''
+              'Authorization': idToken ? (idToken.startsWith('guest_') ? idToken : `Bearer ${idToken}`) : 'guest'
             },
             body: JSON.stringify({
               prompt: prompt,
