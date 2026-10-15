@@ -2193,6 +2193,48 @@
       inputField.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
+    function cleanLatexMath(str) {
+      if (!str) return str;
+      // 1. Fractions, roots, binomials
+      let t = str.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1 / $2)')
+                 .replace(/\\binom\{([^}]+)\}\{([^}]+)\}/g, 'C($1, $2)')
+                 .replace(/\\sqrt\{([^}]+)\}/g, '√($1)');
+
+      // 2. Common LaTeX math symbols
+      const syms = {
+        '\\\\times': '×', '\\\\cdot': '·', '\\\\le\\b': '≤', '\\\\leq\\b': '≤',
+        '\\\\ge\\b': '≥', '\\\\geq\\b': '≥', '\\\\ne\\b': '≠', '\\\\neq\\b': '≠',
+        '\\\\approx': '≈', '\\\\in\\b': '∈', '\\\\notin\\b': '∉', '\\\\Theta': 'Θ',
+        '\\\\Omega': 'Ω', '\\\\pm': '±', '\\\\infty': '∞', '\\\\to\\b': '→'
+      };
+      for (const [k, v] of Object.entries(syms)) {
+        t = t.replace(new RegExp(k, 'g'), v);
+      }
+
+      // 3. Subscripts/superscripts
+      t = t.replace(/([A-Za-z0-9]+)_\{([^}]+)\}/g, '$1_$2')
+           .replace(/([A-Za-z0-9]+)\^\{([^}]+)\}/g, '$1^$2');
+
+      // 4. Double dollar $$...$$ -> ...
+      t = t.replace(/\$\$([^$]+)\$\$/g, '$1');
+
+      // 5. Protect currency ($50, $100.00, etc.)
+      const curTokens = [];
+      t = t.replace(/\$(\d+(?:,\d{3})*(?:\.\d+)?(?:[kKmMbB])?)(?!\$)(?=\s|[.,;!?)]|$)/g, (match) => {
+        curTokens.push(match);
+        return `__WORSTAI_CURR_${curTokens.length - 1}__`;
+      });
+
+      // 6. Single dollar math delimiters $...$ -> ...
+      t = t.replace(/\$([^$\n]+?)\$/g, '$1');
+
+      // 7. Restore currency
+      for (let i = 0; i < curTokens.length; i++) {
+        t = t.replace(`__WORSTAI_CURR_${i}__`, curTokens[i]);
+      }
+      return t;
+    }
+
     function appendMessage(role, text, agents = [], thinking = '') {
       const currentWelcome = document.getElementById('welcome');
       if (currentWelcome) currentWelcome.remove();
@@ -2201,6 +2243,7 @@
       msgDiv.className = `message ${role}`;
       
       const avatarStr = role === 'user' ? 'U' : 'AI';
+      const cleanText = (role === 'ai' && text) ? cleanLatexMath(text) : text;
       
       let actionButtonsHtml = '';
       if (role === 'ai') {
@@ -2231,7 +2274,7 @@
       msgDiv.innerHTML = `
         <div class="avatar ${role}-avatar">${avatarStr}</div>
         <div style="flex:1; min-width: 0;">
-          <div class="content" data-raw="${encodeURIComponent(text)}">${role === 'ai' && text ? marked.parse(text) : (text ? text.replace(/</g, "&lt;").replace(/>/g, "&gt;") : '')}</div>
+          <div class="content" data-raw="${encodeURIComponent(cleanText)}">${role === 'ai' && cleanText ? marked.parse(cleanText) : (cleanText ? cleanText.replace(/</g, "&lt;").replace(/>/g, "&gt;") : '')}</div>
           ${actionButtonsHtml}
         </div>
       `;
@@ -2580,8 +2623,8 @@
 
         if (isFactCheckOn && answer.length > 80) agentsUsed.push("Fact-Checker");
 
-        // Clean answer: strip any internal <think> reasoning tags
-        let displayAnswer = answer.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        // Clean answer: strip any internal <think> reasoning tags and raw LaTeX math delimiters
+        let displayAnswer = cleanLatexMath(answer.replace(/<think>[\s\S]*?<\/think>/gi, '').trim());
 
         const contentEl = aiMsgDiv.querySelector('.content');
         contentEl.setAttribute('data-raw', encodeURIComponent(displayAnswer));
