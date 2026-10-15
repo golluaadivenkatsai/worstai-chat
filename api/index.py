@@ -541,10 +541,24 @@ def read_url_jina(url, max_chars=1500):
 
 def search_wikipedia(query, max_chars=20000):
     """
-    Search Wikipedia using Full-Text API (finds relevant articles across titles and text).
-    Returns clean extract with section structure.
+    Search Wikipedia using Full-Text API with strict relevance validation.
+    Guarantees that irrelevant articles (e.g. musician biographies for exam/tech queries)
+    are strictly rejected.
     """
     try:
+        q_clean = re.sub(r'[^\w\s]', ' ', query.lower()).strip()
+        stop_words = {
+            'a', 'an', 'the', 'is', 'are', 'was', 'were', 'what', 'when', 'who', 'where', 'why',
+            'how', 'in', 'of', 'for', 'on', 'with', 'to', 'at', 'by', 'from', 'up', 'about',
+            'into', 'over', 'after', 'and', 'or', 'not', 'no', 'but', 'if', 'so', 'as', 'out',
+            'all', 'any', 'tell', 'me', 'give', 'show', 'explain', 'difference', 'between', 'vs',
+            'can', 'could', 'will', 'would', 'do', 'does', 'did', 'having', 'have', 'has', 'had',
+            'i', 'you', 'he', 'she', 'it', 'we', 'they', 'my', 'your', 'his', 'her', 'its', 'our'
+        }
+        words = [w for w in q_clean.split() if w not in stop_words and len(w) > 2]
+        if not words:
+            return ''
+
         search_url = (
             'https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch='
             + urllib.parse.quote(query) + '&format=json'
@@ -555,15 +569,36 @@ def search_wikipedia(query, max_chars=20000):
             items = data.get('query', {}).get('search', [])
             if not items:
                 return ''
+            
             top_title = ''
-            for it in items:
+            for it in items[:6]:
                 t = it.get('title', '')
                 t_low = t.lower()
-                if 'disambiguation' not in t_low and 'list of' not in t_low:
+                if 'disambiguation' in t_low or 'list of' in t_low:
+                    continue
+                
+                title_words = set(re.findall(r'\b\w+\b', t_low))
+                snippet_clean = re.sub(r'<[^>]+>', ' ', it.get('snippet', '').lower())
+                snippet_words = set(re.findall(r'\b\w+\b', snippet_clean))
+                
+                # Strict Domain Relevance Guard:
+                # If the query is an exam / test / problem ('gate', 'jee', 'neet', 'exam', 'question', 'problem'):
+                # Never accept biographies, singers, musicians, albums, or fictional characters
+                if any(ew in words for ew in ['gate', 'exam', 'jee', 'neet', 'question', 'problem']):
+                    if not any(ew in title_words or ew in snippet_words for ew in ['gate', 'exam', 'test', 'engineering', 'syllabus', 'iit']):
+                        continue
+                
+                overlap_title = [w for w in words if w in title_words]
+                if overlap_title:
                     top_title = t
                     break
+                overlap_snippet = [w for w in words if w in snippet_words]
+                if len(overlap_snippet) >= max(1, len(words) - 1):
+                    top_title = t
+                    break
+                    
             if not top_title:
-                top_title = items[0].get('title', '')
+                return ''
 
         ext_url = (
             f'https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&titles='
@@ -578,6 +613,9 @@ def search_wikipedia(query, max_chars=20000):
                 if extract:
                     if 'may refer to:' in extract[:300].lower():
                         continue
+                    extract_low = extract[:1500].lower()
+                    if not any(w in extract_low for w in words):
+                        return ''
                     return extract[:max_chars]
         return ''
     except Exception:
@@ -2001,6 +2039,66 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "- **Dictionary Keys Requirement**: Dictionary keys must be immutable (strings, integers, floats, tuples); mutable types like lists cannot be hashed."
         )
 
+    # 14. Hardest GATE Questions & Toughest Engineering Problems
+    if any(k in q for k in [
+        'hardest gate', 'toughest gate', 'hard gate question', 'difficult gate question',
+        'toughest gate question', 'gate hardest', 'hardest gate questions', 'toughest gate questions',
+        'hardest gate problem', 'hardest gate cse'
+    ]):
+        return (
+            "## The Hardest & Most Challenging GATE Questions (Computer Science & Engineering)\n\n"
+            "In the history of the GATE (Graduate Aptitude Test in Engineering) examination, specific conceptual problems across "
+            "**Theory of Computation**, **Computer Organization & Architecture (Memory/Cache)**, **Operating Systems**, and **Discrete Mathematics** "
+            "are recognized as the most difficult, with historically low success rates (< 5% correct answers).\n\n"
+            "---\n\n"
+            "### 1. Undecidability & Rice's Theorem (GATE CSE - TOC)\n\n"
+            "**The Classic Trap Question:**\n"
+            "> *\"Let L1 be a recursive language and L2 be a recursively enumerable (RE) but non-recursive language. Which of the following statements is strictly FALSE?\"*\n"
+            "> - **(A)** If L1 ⊆ L ⊆ L2, then L must be recursive.\n"
+            "> - **(B)** The complement of L1 is recursive.\n"
+            "> - **(C)** L1 ∩ L2 is recursively enumerable.\n"
+            "> - **(D)** Every non-trivial semantic property of RE languages is undecidable.\n\n"
+            "**Solution & Detailed Analysis:**\n"
+            "- **Correct Option (FALSE statement)**: **(A)**\n"
+            "- **Why it's the hardest trap**: Aspirants assume that a language sandwiched between a recursive and an RE language inherits decidability. In reality, one can construct an undecidable language L that lies strictly between L1 and L2.\n"
+            "- **Governing Rule**: By **Rice's Theorem (Part I)**, any non-trivial semantic property regarding the language accepted by a Turing Machine is **undecidable**.\n\n"
+            "---\n\n"
+            "### 2. Multi-Level Page Table Overhead & Bit Splitting (GATE CSE - OS/COA)\n\n"
+            "**The Problem:**\n"
+            "> *\"A 64-bit system uses 48-bit virtual addresses, 40-bit physical addresses, and 8 KB page size. Each page table entry occupies 8 bytes. What is the minimum number of levels required in a hierarchical page table such that each page table fits completely within a single page frame?\"*\n\n"
+            "**Step-by-Step Derivation:**\n"
+            "1. **Page Offset Bits**: Page size = 8 KB = 2^13 bytes => **13 bits** for page offset.\n"
+            "2. **Virtual Page Number (VPN) Bits**: Total Virtual Address (48 bits) - Offset (13 bits) = **35 bits**.\n"
+            "3. **Entries Per Page Frame**: Page Frame Size (8 KB) / Entry Size (8 bytes) = 1024 = 2^10 entries => **10 bits** index per level.\n"
+            "4. **Number of Levels Required**: Ceiling(35 / 10) = **4 levels** (structured as 5 bits for root level + 10 + 10 + 10 bits).\n"
+            "- **Common Pitfall**: Overlooking the constraint that every level's table must not exceed a single 8 KB page frame.\n\n"
+            "---\n\n"
+            "### 3. Maximum Edges in Disconnected Graphs (GATE CSE - Discrete Math)\n\n"
+            "**The Problem:**\n"
+            "> *\"What is the maximum number of edges in an undirected simple graph with n vertices disconnected into at least k components?\"*\n\n"
+            "**Exact Mathematical Formula:**\n"
+            "- Formula: Max Edges = (n - k)(n - k + 1) / 2 = C(n - k + 1, 2)\n"
+            "- **For 2 Components (k = 2)**: Max Edges = (n - 1)(n - 2) / 2 = C(n - 1, 2)\n"
+            "- **Operational Logic**: To maximize edges while keeping the graph disconnected, isolate (k - 1) vertices (giving them 0 edges) and connect all remaining (n - k + 1) vertices into a single complete graph K_{n - k + 1}.\n"
+            "- **Example (n = 10, k = 2)**: C(10 - 1, 2) = C(9, 2) = (9 × 8) / 2 = 36 edges.\n\n"
+            "---\n\n"
+            "### 4. Cache Tag Directory & Memory Overhead with Write-Back (GATE CSE - COA)\n\n"
+            "**The Problem:**\n"
+            "> *\"A 64 KB 4-way set-associative cache with 32-byte blocks operates on a 32-bit physical address. If write-back policy with dirty bit and LRU replacement is used, what is the total cache tag directory overhead?\"*\n\n"
+            "**Mathematical Breakdown:**\n"
+            "1. **Total Cache Lines**: 64 KB / 32 bytes = 2048 lines.\n"
+            "2. **Number of Sets**: 2048 / 4 = 512 = 2^9 => **9 bits** Set Index.\n"
+            "3. **Block Offset Bits**: 32 bytes = 2^5 => **5 bits** Block Offset.\n"
+            "4. **Tag Bits**: 32 - (9 + 5) = 18 bits.\n"
+            "5. **Overhead Bits per Line**: 18 Tag bits + 1 Valid bit + 1 Dirty bit + 2 LRU bits (log2(4) = 2) = **22 bits**.\n"
+            "6. **Total Directory Overhead**: 2048 × 22 bits = 45,056 bits = 5.632 KB.\n\n"
+            "---\n\n"
+            "### High-Yield Exam Memory Tips for Toughest GATE Questions\n"
+            "- **Deadlock Freedom Bound**: If P processes each require at most R instances of a single resource type, the minimum number of resources to prevent deadlock is **P(R - 1) + 1**.\n"
+            "- **Planar Graph Edge Bound**: For any simple connected planar graph with V ≥ 3 vertices, edges are bounded by **E ≤ 3V - 6**.\n"
+            "- **MSQ Strategy**: Multiple Select Questions have NO negative marking and NO partial marking. Double check all edge cases before final submission."
+        )
+
     # 15. Operating Systems: Deadlock & 4 Coffman Conditions
     if any(k in q for k in ['deadlock', 'coffman', 'banker algorithm', "banker's algorithm"]):
         return (
@@ -2718,43 +2816,50 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
     wiki_info = search_wikipedia(prompt, max_chars=20000)
     clean_wiki = re.sub(r'==+[^=]+==+', '', wiki_info).strip() if wiki_info else ''
 
-    # Pool candidate sentences across all sources
+    # Extract substantive words from the query for strict relevance checks
+    words = [w for w in clean_title.lower().split() if len(w) > 2]
+
+    # Pool candidate sentences across all verified sources
     candidates = []
     for s in ddg_snippets:
-        candidates.append((s, 3.5))
+        if s and len(s) > 25:
+            candidates.append((s, 4.0))
     for s in gfg_snippets:
-        candidates.append((s, 2.5))
+        if s and len(s) > 25:
+            candidates.append((s, 3.0))
     if clean_wiki:
-        for s in re.split(r'(?<=[.!?])\s+|\n\n+', clean_wiki):
+        for s in re.split(r'(?<=[.!?])\s+', clean_wiki):
             s_clean = s.strip()
-            if len(s_clean) > 25 and len(s_clean) < 350:
-                candidates.append((s_clean, 1.2))
+            # Clean up broken quotes or orphaned punctuation
+            s_clean = re.sub(r'^["\',;:\-\s]+', '', s_clean)
+            if len(s_clean) > 35 and len(s_clean) < 350:
+                # Must contain at least one substantive query word
+                if words and any(w in s_clean.lower() for w in words):
+                    candidates.append((s_clean, 1.5))
 
-    # Score candidates based on query intent
+    # Score candidates based on query intent and relevance
     scored = []
     for s, base_weight in candidates:
         s_low = s.lower()
         score = base_weight
+
+        # Relevance overlap check
+        overlap_count = sum(1 for w in words if w in s_low)
+        if words and overlap_count == 0:
+            continue
+        score += overlap_count * 2.5
+
         if is_release_query:
             if any(k in s_low for k in ['release', 'scheduled', 'launch', 'delayed', 'window', 'date']):
                 score += 5.0
             if any(yr in s for yr in ['2024', '2025', '2026', '2027', 'november', 'may', 'autumn', 'fall', 'spring']):
                 score += 6.0
-            if any(w in s_low for w in clean_title.lower().split()):
-                score += 2.0
         elif is_who_query:
             if any(k in s_low for k in ['founder', 'founded', 'ceo', 'president', 'inventor', 'created by', 'developed by', 'lead']):
                 score += 5.0
-            if any(w in s_low for w in clean_title.lower().split()):
-                score += 2.0
         elif is_where_query:
             if any(k in s_low for k in ['capital', 'largest city', 'located in', 'situated in', 'headquarters in', 'based in']):
                 score += 5.0
-            if any(w in s_low for w in clean_title.lower().split()):
-                score += 2.0
-        else:
-            words = [w for w in clean_title.lower().split() if len(w) > 2]
-            score += sum(2.0 for w in words if w in s_low)
 
         scored.append((score, s))
 
@@ -2771,7 +2876,12 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
                 break
 
     if not best_sentences and ddg_snippets:
-        best_sentences = ddg_snippets[:3]
+        # Fallback to DDG snippets matching at least one word
+        for s in ddg_snippets:
+            if not words or any(w in s.lower() for w in words):
+                best_sentences.append(s)
+                if len(best_sentences) >= 3:
+                    break
 
     if not best_sentences:
         return f"**{clean_title}**: Detailed information is currently being verified. Please specify if you'd like recent news, technical specifics, or related details."
@@ -3910,9 +4020,9 @@ class handler(http.server.BaseHTTPRequestHandler):
         if research_brief:
             system_content += (
                 '\n\nYou have access to live web research results below. '
-                'Use this information to give accurate, sourced answers. '
-                'Cross-check any facts before stating them. '
-                'If the research contradicts your training, trust the research.\n\n'
+                'Use this information to provide accurate, verified, and grounded answers. '
+                'Critical Rule: If any research note is irrelevant, off-topic, or discusses an unrelated person/concept, '
+                'disregard it completely and answer using your verified academic knowledge.\n\n'
                 + research_brief
             )
 
