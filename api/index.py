@@ -200,7 +200,7 @@ def read_url_jina(url, max_chars=1500):
         return ''
 
 
-def search_wikipedia(query, max_chars=3500):
+def search_wikipedia(query, max_chars=20000):
     """
     Search Wikipedia using Full-Text API (finds relevant articles across titles and text).
     Returns clean extract with section structure.
@@ -211,7 +211,7 @@ def search_wikipedia(query, max_chars=3500):
             + urllib.parse.quote(query) + '&format=json'
         )
         req = urllib.request.Request(search_url, headers={'User-Agent': 'WorstAI-Academic-Bot/2.0'})
-        with urllib.request.urlopen(req, timeout=2.5) as res:
+        with urllib.request.urlopen(req, timeout=3.5) as res:
             data = json.loads(res.read().decode('utf-8'))
             items = data.get('query', {}).get('search', [])
             if not items:
@@ -231,7 +231,7 @@ def search_wikipedia(query, max_chars=3500):
             + urllib.parse.quote(top_title) + '&format=json'
         )
         req2 = urllib.request.Request(ext_url, headers={'User-Agent': 'WorstAI-Academic-Bot/2.0'})
-        with urllib.request.urlopen(req2, timeout=2.5) as res2:
+        with urllib.request.urlopen(req2, timeout=3.5) as res2:
             ext_data = json.loads(res2.read().decode('utf-8'))
             pages = ext_data.get('query', {}).get('pages', {})
             for pid, pdata in pages.items():
@@ -416,15 +416,22 @@ def should_perform_research(query: str) -> bool:
     """Determines whether a query genuinely requires external live web research."""
     q = query.strip().lower()
     
-    # 1. Do not search for pure conversational phrases, small-talk, or single words
+    # 1. Do not search for pure conversational phrases, small-talk, compliments, affirmations
     conversational = [
         'what is this', 'what is that', 'what do you mean', 'why', 'why is this', 
         'why that', 'how come', 'who are you', 'what are you', 'hello', 'hi', 
         'hey', 'thanks', 'thank you', 'ok', 'okay', 'explain', 'help', 'no', 'yes',
         'what did you say', 'what does this mean', 'why did you', 'what is the meaning',
-        'give the code', 'give code', 'code', 'python', 'java', 'c++'
+        'give the code', 'give code', 'code', 'python', 'java', 'c++', 'good', 'good job',
+        'nice', 'great', 'awesome', 'super', 'well done', 'got it', 'understood', 'fine',
+        'sure', 'bye', 'goodbye', 'misinformation', 'you misunderstood', 'cool'
     ]
     if q in conversational or len(q.split()) <= 1:
+        return False
+
+    # Skip conversational speech and user corrections
+    conv_prefixes = ['i told', 'i said', 'i meant', 'i was saying', 'i asked', 'you said', 'you told', 'how are you', 'what are you', 'who are you']
+    if any(q.startswith(p) for p in conv_prefixes):
         return False
         
     # 2. Skip identity and creator queries (handled instantly by Identity Core)
@@ -452,8 +459,13 @@ def should_perform_research(query: str) -> bool:
     if any(k in q for k in live_keywords):
         return True
 
-    # 5. Queries with 3+ words: enable web research so WorstAI has knowledge across the world
-    if len(q.split()) >= 3:
+    # 5. Queries with 3+ words: only research if informational / educational, never for conversational speech
+    non_research_conversational = ['i told', 'i said', 'good job', 'well done', 'you are', 'thank you', 'thanks a', 'so good', 'very good']
+    if any(nrc in q for nrc in non_research_conversational):
+        return False
+
+    informational_triggers = ['who is', 'what is', 'where is', 'when did', 'how does', 'explain', 'history of', 'features of', 'difference between', 'vs']
+    if any(it in q for it in informational_triggers) and len(q.split()) >= 3:
         return True
 
     return False
@@ -488,7 +500,7 @@ def run_web_research(query, location_context=''):
         # 1. Race the search engines to find URLs & snippets instantly
         executor1 = concurrent.futures.ThreadPoolExecutor(max_workers=len(search_engines))
         futures = {executor1.submit(engine, search_query, 4): engine for engine in search_engines}
-        for future in concurrent.futures.as_completed(futures, timeout=2.5):
+        for future in concurrent.futures.as_completed(futures, timeout=1.6):
             try:
                 res = future.result()
                 if res:
@@ -535,7 +547,7 @@ def run_web_research(query, location_context=''):
         for sr in search_results[:2]:
             future_to_task[executor2.submit(fetch_page, sr)] = "fetch_page"
             
-        for future in concurrent.futures.as_completed(future_to_task, timeout=2):
+        for future in concurrent.futures.as_completed(future_to_task, timeout=1.4):
             try:
                 result = future.result()
                 if result:
@@ -2340,59 +2352,107 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
     prompt_raw = prompt.strip()
     q_low = prompt_raw.lower()
 
-    # Clean title extraction
-    clean_title = re.sub(r'^(what is|what are|explain|describe|difference between|how does|how do|how to|tell me about|define)\s+', '', prompt.strip(), flags=re.IGNORECASE)
-    clean_title = re.sub(r'^(a|an|the)\s+', '', clean_title.strip(), flags=re.IGNORECASE)
-    clean_title = re.sub(r'\s+(work|mean|differ|operate)\??$', '', clean_title, flags=re.IGNORECASE)
-    clean_title = clean_title.rstrip('?.,! ').strip().title()
-    if not clean_title or len(clean_title) < 2:
-        clean_title = prompt.strip().title()
+    # DO NOT synthesize academic articles for conversational phrases, pronouns, greetings, or feedback
+    conversational_skip = [
+        'good', 'good job', 'i told', 'i said', 'i meant', 'i was saying', 'nice', 'great', 'well done',
+        'thanks', 'thank you', 'hello', 'hi', 'hey', 'ok', 'okay', 'fine', 'who are you',
+        'who is your', 'what are you', 'how are you', 'you misunderstood', 'misinformation',
+        'wrong', 'yes', 'no', 'cool', 'super', 'awesome', 'bye', 'thank', 'got it', 'understood',
+        'what did you', 'why did you', 'not that', 'not this', 'what are you doing'
+    ]
+    if any(q_low == cs or q_low.startswith(cs + ' ') or q_low.endswith(' ' + cs) for cs in conversational_skip) or len(q_low.split()) <= 1:
+        return None
 
-    # Priority 1: Fetch Live Web Snippets (DuckDuckGo has the most direct, real-world factual answers)
-    ddg_res = search_duckduckgo(prompt, 4)
+    # Clean title extraction (strip question verbs and articles)
+    clean_title = re.sub(
+        r'^(when|where|who|why|how|what|which|can you|tell me about|tell me|explain|describe|is there|is it|give me|find)\s+(is|was|are|were|will|did|does|do|the|a|an)?\s*',
+        '', prompt.strip(), flags=re.IGNORECASE
+    )
+    clean_title = re.sub(r'^(a|an|the)\s+', '', clean_title.strip(), flags=re.IGNORECASE)
+    clean_title = clean_title.rstrip('?.,! ').strip().title()
+    if not clean_title or len(clean_title) < 2 or clean_title.lower() in conversational_skip or any(clean_title.lower().startswith(cs) for cs in ['i told', 'i said', 'i meant', 'i was', 'good job', 'good', 'nice', 'great', 'super', 'well done', 'you are']):
+        return None
+
+    is_release_query = any(k in q_low for k in ['release', 'when', 'launch', 'coming out', 'date of', 'available', 'scheduled'])
+    is_who_query = any(k in q_low for k in ['who is', 'who was', 'founder', 'ceo', 'president', 'inventor', 'creator', 'developed by', 'created by'])
+    is_where_query = any(k in q_low for k in ['where is', 'capital of', 'headquarters', 'located in', 'situated in'])
+    is_direct_question = is_release_query or is_who_query or is_where_query or any(q_low.startswith(w) for w in ['when', 'who', 'where', 'how many', 'what is the date', 'which year', 'is there', 'can i'])
+
+    # Priority 1: Fetch Live Web Snippets (DuckDuckGo has the most direct real-world answers)
+    ddg_res = search_duckduckgo(prompt, 5)
     ddg_snippets = [s for _, s in ddg_res if s and len(s) > 25]
 
     # Priority 2: GeeksforGeeks for CS / Programming concepts
-    gfg_snippets = search_gfg_snippets(prompt)
+    gfg_snippets = search_gfg_snippets(prompt) if any(k in q_low for k in ['code', 'python', 'java', 'algorithm', 'complexity', 'sort', 'tree', 'graph', 'database', 'sql']) else []
 
-    # Priority 3: Wikipedia
-    wiki_info = search_wikipedia(prompt)
+    # Priority 3: Wikipedia full text
+    wiki_info = search_wikipedia(prompt, max_chars=20000)
     clean_wiki = re.sub(r'==+[^=]+==+', '', wiki_info).strip() if wiki_info else ''
-    paragraphs = [p.strip() for p in clean_wiki.split('\n\n') if len(p.strip()) > 50]
 
-    core_summary = ""
-    takeaways = []
+    # Pool candidate sentences across all sources
+    candidates = []
+    for s in ddg_snippets:
+        candidates.append((s, 3.5))
+    for s in gfg_snippets:
+        candidates.append((s, 2.5))
+    if clean_wiki:
+        for s in re.split(r'(?<=[.!?])\s+|\n\n+', clean_wiki):
+            s_clean = s.strip()
+            if len(s_clean) > 25 and len(s_clean) < 350:
+                candidates.append((s_clean, 1.2))
 
-    if ddg_snippets:
-        core_summary = ddg_snippets[0].rstrip('. ') + '.'
-        if len(ddg_snippets) > 1 and len(core_summary) < 160:
-            core_summary += " " + ddg_snippets[1].rstrip('. ') + '.'
-        for s in ddg_snippets[1:5]:
-            if s not in core_summary and len(takeaways) < 4:
-                takeaways.append(f"- **Key Insight**: {s.rstrip('. ')}.")
-    elif gfg_snippets:
-        core_summary = gfg_snippets[0].rstrip('. ') + '.'
-        for s in gfg_snippets[1:5]:
-            if s not in core_summary and len(takeaways) < 4:
-                takeaways.append(f"- **Core Concept**: {s.rstrip('. ')}.")
-    elif paragraphs:
-        sentences = [s.strip() for s in paragraphs[0].split('.') if len(s.strip()) > 20]
-        core_summary = ". ".join(sentences[:2]) + "." if len(sentences) >= 2 else paragraphs[0][:220] + "."
-        if clean_wiki:
-            sents = [s.strip() for s in re.split(r'\.\s+', clean_wiki) if len(s.strip()) > 25 and len(s.strip()) < 160]
-            for s in sents[1:5]:
-                if len(takeaways) < 4:
-                    takeaways.append(f"- **Key Takeaway**: {s}.")
-    else:
-        # Simple, non-robotic fallback for general topics
-        core_summary = f"**{clean_title}** is an essential topic requiring a clear, structured understanding."
-        takeaways = [
-            f"- **Primary Definition**: Understanding the fundamental purpose and role of {clean_title}.",
-            "- **Practical Implementation**: Applying verified principles and adhering to modern best practices.",
-            "- **Optimization & Testing**: Ensuring robust performance and validating against edge cases."
-        ]
+    # Score candidates based on query intent
+    scored = []
+    for s, base_weight in candidates:
+        s_low = s.lower()
+        score = base_weight
+        if is_release_query:
+            if any(k in s_low for k in ['release', 'scheduled', 'launch', 'delayed', 'window', 'date']):
+                score += 5.0
+            if any(yr in s for yr in ['2024', '2025', '2026', '2027', 'november', 'may', 'autumn', 'fall', 'spring']):
+                score += 6.0
+            if any(w in s_low for w in clean_title.lower().split()):
+                score += 2.0
+        elif is_who_query:
+            if any(k in s_low for k in ['founder', 'founded', 'ceo', 'president', 'inventor', 'created by', 'developed by', 'lead']):
+                score += 5.0
+            if any(w in s_low for w in clean_title.lower().split()):
+                score += 2.0
+        elif is_where_query:
+            if any(k in s_low for k in ['capital', 'largest city', 'located in', 'situated in', 'headquarters in', 'based in']):
+                score += 5.0
+            if any(w in s_low for w in clean_title.lower().split()):
+                score += 2.0
+        else:
+            words = [w for w in clean_title.lower().split() if len(w) > 2]
+            score += sum(2.0 for w in words if w in s_low)
 
-    # If comparison was asked (contains 'vs' or 'difference between'), generate clean comparison table
+        scored.append((score, s))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    best_sentences = []
+    seen = set()
+    for _, s in scored:
+        s_norm = s[:45].lower()
+        if s_norm not in seen:
+            seen.add(s_norm)
+            best_sentences.append(s)
+            if len(best_sentences) >= 4:
+                break
+
+    if not best_sentences and ddg_snippets:
+        best_sentences = ddg_snippets[:3]
+
+    if not best_sentences:
+        return f"**{clean_title}**: Detailed information is currently being verified. Please specify if you'd like recent news, technical specifics, or related details."
+
+    lead_answer = best_sentences[0]
+    lead_answer = re.sub(r'^(?:[A-Za-z]+\s+\d{1,2},?\s+\d{4}\s+)?(?:hi|hello|hey)\s+(?:everyone|guys|all|folks|there)[,:\s]+', '', lead_answer, flags=re.IGNORECASE).strip()
+    if lead_answer:
+        lead_answer = lead_answer[0].upper() + lead_answer[1:]
+
+    # Comparison Table if comparison query
     comp_table = ""
     if any(k in q_low for k in [' vs ', ' vs. ', 'difference between', 'compare ']):
         parts_comp = re.split(r'\s+vs\.?\s+|\s+and\s+', clean_title, flags=re.IGNORECASE)
@@ -2407,13 +2467,26 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
                 f"| **Best Used When** | Direct, specialized use cases | Alternative or complementary scenarios |\n"
             )
 
-    parts = [
-        f"## {clean_title}\n\n{core_summary}",
-        comp_table,
-        "\n\n---\n\n### Key Concepts & Takeaways\n\n" + "\n".join(takeaways[:4])
-    ]
+    # Format Output: Clean, natural English with ZERO robotic "Key Takeaway" prefixes
+    out_parts = []
+    if is_direct_question:
+        out_parts.append(f"**{lead_answer}**\n")
+        details = best_sentences[1:4]
+        if details:
+            out_parts.append("\n### Key Details\n")
+            for d in details:
+                out_parts.append(f"- {d}\n")
+    else:
+        out_parts.append(f"## {clean_title}\n\n{lead_answer}\n")
+        if comp_table:
+            out_parts.append(comp_table)
+        details = best_sentences[1:4]
+        if details:
+            out_parts.append("\n### Key Details\n")
+            for d in details:
+                out_parts.append(f"- {d}\n")
 
-    return "".join(parts).strip()
+    return "".join(out_parts).strip()
 
 def get_ai_response(messages, last_user_message, is_voice=False):
     """
@@ -2492,7 +2565,7 @@ def get_ai_response(messages, last_user_message, is_voice=False):
                     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
                 }
             )
-            with urllib.request.urlopen(req, timeout=7.5) as res:
+            with urllib.request.urlopen(req, timeout=3.8) as res:
                 chunks = []
                 for chunk in res:
                     if chunk:
@@ -2531,7 +2604,7 @@ def get_ai_response(messages, last_user_message, is_voice=False):
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
                 }
             )
-            with urllib.request.urlopen(req, timeout=8.5) as res:
+            with urllib.request.urlopen(req, timeout=3.8) as res:
                 raw_text = res.read().decode('utf-8', errors='replace').strip()
                 ans = raw_text
                 try:
@@ -2558,7 +2631,7 @@ def get_ai_response(messages, last_user_message, is_voice=False):
         executor.submit(call_pollinations): 'pollinations'
     }
     try:
-        for future in concurrent.futures.as_completed(futures, timeout=9.0):
+        for future in concurrent.futures.as_completed(futures, timeout=4.0):
             try:
                 res = future.result()
                 executor.shutdown(wait=False, cancel_futures=True)
@@ -2573,7 +2646,7 @@ def get_ai_response(messages, last_user_message, is_voice=False):
     # Layer 3: Autonomous Real-Time Web Grounded Synthesis (0.4s)
     fallback_synthesis = synthesize_academic_response(resolved_query, only_curated=False)
     if fallback_synthesis:
-        return fallback_synthesis, "WorstAI-Academic-Engine"
+        return fallback_synthesis, "WorstAI-Fact-Engine"
 
     return "## Core Concept Summary\nInformation processed successfully.", "WorstAI-Core"
 
@@ -2910,7 +2983,122 @@ class handler(http.server.BaseHTTPRequestHandler):
             self.send_json({'success': False, 'error': 'Empty prompt'})
             return
 
-        # Resolve follow-up query context immediately across multi-turn sessions
+        prompt_lower = prompt.lower().strip()
+        is_telugu = bool(re.search(r'[\u0C00-\u0C7F]', prompt))
+        p_clean_alpha = re.sub(r'[^\w\s]', '', prompt_lower).strip()
+        clean_words = p_clean_alpha.split()
+
+        # =====================================================================
+        # 0. CONVERSATIONAL UNDERSTANDING & FEEDBACK INTERCEPTOR (Instant 0.0001s)
+        # Accurately recognizes user compliments, praise, affirmations, corrections
+        # and disambiguates conversational phrases like "i told good job" with zero delay.
+        # =====================================================================
+
+        # 0. A. Direct Compliments, Praise & Appreciation
+        compliment_exact = {
+            'good', 'good job', 'great job', 'nice job', 'well done', 'good work', 'great work',
+            'nice work', 'awesome work', 'excellent work', 'superb work', 'fine job', 'amazing work',
+            'nice', 'great', 'awesome', 'super', 'superb', 'cool', 'excellent', 'wonderful',
+            'fantastic', 'amazing', 'brilliant', 'perfect', 'love it', 'looks good', 'sounds good',
+            'this is good', 'that is good', 'thats good', 'that’s good', 'very good', 'so good',
+            'good one', 'well explained', 'good explanation', 'nice explanation', 'great explanation',
+            'good ai', 'nice ai', 'smart ai', 'you are good', 'you are great', 'you are awesome',
+            'you are smart', 'you are fast', 'you did great', 'you did good', 'you did a good job',
+            'you did a great job', 'you helped me a lot', 'good answer', 'nice answer', 'great answer'
+        }
+
+        clarified_compliment_pats = [
+            r'^(?:i\s+(?:told|said|meant|was\s+saying|told\s+you|told\s+u)\s+)?(?:you\s+did\s+a\s+)?(good\s+job|great\s+job|nice\s+job|well\s+done|good\s+work|nice\s+work|great\s+work|good|nice|great|awesome|super)\b',
+            r'\b(?:told|said|meant)\s+(?:good\s+job|great\s+job|nice\s+job|well\s+done|good|nice)\b',
+            r'\bi\s+(?:told|said)\s+(?:u\s+|you\s+)?good\s+job\b',
+            r'\bi\s+(?:told|said)\s+good\b'
+        ]
+
+        telugu_praise = ['బాగుంది', 'చాలా బాగుంది', 'మంచిది', 'సూపర్', 'గ్రేట్']
+
+        if p_clean_alpha in compliment_exact or any(re.search(pat, prompt_lower) for pat in clarified_compliment_pats) or any(k in prompt for k in telugu_praise):
+            if is_telugu:
+                ans = "చాలా ధన్యవాదాలు! నా సమాధానం మీకు ఉపయోగపడినందుకు సంతోషం. మీకు ఇంకా ఏవైనా సందేహాలు లేదా ప్రశ్నలు ఉంటే అడగండి, నేను తప్పకుండా సహాయం చేస్తాను!"
+            else:
+                ans = "Thank you so much! I really appreciate your feedback and kind words. I'm glad I could help! If you have any other questions, topics, or code you'd like to work on, feel free to ask!"
+            self.send_json({
+                'success': True,
+                'answer': ans,
+                'thinking': '',
+                'agents_used': ['WorstAI-Concierge']
+            })
+            return
+
+        # 0. B. Affirmations, Agreement & Acknowledgements
+        affirmation_exact = {
+            'ok', 'okay', 'fine', 'alright', 'all right', 'got it', 'i got it', 'understood',
+            'i understand', 'sure', 'yep', 'yeah', 'yes', 'no problem', 'noted', 'makes sense',
+            'clear', 'crystal clear', 'right', 'correct', 'exactly', 'k', 'kk'
+        }
+        if p_clean_alpha in affirmation_exact or (len(clean_words) <= 2 and clean_words and clean_words[0] in ['ok', 'okay', 'fine', 'got']):
+            if is_telugu:
+                ans = "సరే! మీరు తరువాత ఏమి నేర్చుకోవాలనుకుంటున్నారు? సంకోచించకుండా అడగండి!"
+            else:
+                ans = "Got it! What would you like to explore next? Feel free to ask any question, topic, or code problem!"
+            self.send_json({
+                'success': True,
+                'answer': ans,
+                'thinking': '',
+                'agents_used': ['WorstAI-Concierge']
+            })
+            return
+
+        # 0. C. User Feedback on Misunderstanding / Training / Accuracy
+        misunderstanding_pats = [
+            r'\bmisinformation\b', r'\byou\s+misunderstood\b', r'\bmisunderstood\b',
+            r'\bwrong\s+answer\b', r'\bnot\s+what\s+i\s+(asked|said|meant)\b',
+            r'\bwhy\s+did\s+you\s+say\s+that\b', r'\bi\s+did\s+not\s+ask\s+that\b',
+            r'\bnot\s+this\b', r'\byou\s+are\s+wrong\b', r'\btrain\s+it\s+well\b',
+            r'\bunderstand\s+what\s+user\s+is\s+tell\b', r'\btaking\s+more\s+time\b'
+        ]
+        if any(re.search(pat, prompt_lower) for pat in misunderstanding_pats):
+            ans = (
+                "I completely understand and sincerely apologize for the previous misunderstanding! "
+                "I have refined my conversational understanding to accurately recognize your feedback, compliments, and exact questions without delay. "
+                "I am ready to assist you quickly and accurately. Please let me know what specific topic, algorithm, or question you would like help with right now!"
+            )
+            self.send_json({
+                'success': True,
+                'answer': ans,
+                'thinking': '',
+                'agents_used': ['Identity Core', 'WorstAI-Concierge']
+            })
+            return
+
+        # 0. D. Conversational Disambiguation: "i told X", "i said X", "i meant X"
+        clarification_prefix = re.match(r'^(?:i\s+(?:told|said|meant|was\s+saying|asked)\s+(?:you\s+|u\s+)?(?:about\s+|to\s+)?|i\s+told\s+)(.+)$', prompt_lower)
+        if clarification_prefix:
+            extracted_sub = clarification_prefix.group(1).strip()
+            # If the extracted sub is a compliment or greeting:
+            if extracted_sub in compliment_exact or any(re.search(pat, extracted_sub) for pat in clarified_compliment_pats):
+                self.send_json({
+                    'success': True,
+                    'answer': "Thank you so much for the compliment! I'm glad I could assist you. What would you like to explore next?",
+                    'thinking': '',
+                    'agents_used': ['WorstAI-Concierge']
+                })
+                return
+            elif extracted_sub in affirmation_exact:
+                self.send_json({
+                    'success': True,
+                    'answer': "Got it! Feel free to ask your next question whenever you're ready.",
+                    'thinking': '',
+                    'agents_used': ['WorstAI-Concierge']
+                })
+                return
+            elif len(extracted_sub) >= 2:
+                # User is clarifying an actual technical topic e.g. "i told binary search" -> treat query as "binary search"
+                prompt = extracted_sub
+                prompt_lower = prompt.lower().strip()
+                p_clean_alpha = re.sub(r'[^\w\s]', '', prompt_lower).strip()
+                clean_words = p_clean_alpha.split()
+
+        # Resolve follow-up query context across multi-turn sessions (only for genuine technical follow-ups)
         resolved_query = prompt
         follow_up_phrases = [
             'what is this', 'what is that', 'what does this mean', 'explain this', 'tell me more', 
@@ -2920,7 +3108,7 @@ class handler(http.server.BaseHTTPRequestHandler):
             'continue', 'next', 'more details', 'help me with this'
         ]
         p_clean = prompt.lower().strip()
-        is_follow_up = any(fp == p_clean or p_clean.startswith(fp + ' ') or p_clean.endswith(' ' + fp) for fp in follow_up_phrases) or (len(p_clean.split()) <= 2 and p_clean not in ['hi', 'hello', 'hey', 'namaste', 'bye'])
+        is_follow_up = any(fp == p_clean or p_clean.startswith(fp + ' ') or p_clean.endswith(' ' + fp) for fp in follow_up_phrases)
         if is_follow_up:
             last_topic = ''
             for msg in reversed(history[-10:]):
@@ -2937,8 +3125,6 @@ class handler(http.server.BaseHTTPRequestHandler):
                     resolved_query = f"{last_topic} - {prompt}"
 
         # --- 1. STRICT CREATOR, IDENTITY, GOD & CONCIERGE ENFORCEMENT (Instant 0.0001s) ---
-        prompt_lower = prompt.lower().strip()
-        is_telugu = bool(re.search(r'[\u0C00-\u0C7F]', prompt))
 
         # A. Clarification: "God means who create you"
         god_clarification_patterns = [
@@ -3297,7 +3483,7 @@ class handler(http.server.BaseHTTPRequestHandler):
                     'success': True,
                     'answer': sanitized_fallback,
                     'thinking': '',
-                    'agents_used': ['WorstAI-Academic-Resilience']
+                    'agents_used': ['WorstAI-Fact-Engine']
                 })
             else:
                 self.send_json({'success': False, 'error': str(e)})

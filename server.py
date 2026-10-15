@@ -244,6 +244,68 @@ class SwarmHandler(http.server.SimpleHTTPRequestHandler):
             # Sentiment Analysis Agent
             if use_sentiment:
                 agents_used.append("Sentiment Analysis")
+
+            # --- Conversational Understanding & Feedback Interceptor ---
+            prompt_lower = prompt.lower().strip()
+            p_clean_alpha = re.sub(r'[^\w\s]', '', prompt_lower).strip()
+            clean_words = p_clean_alpha.split()
+
+            compliment_exact = {
+                'good', 'good job', 'great job', 'nice job', 'well done', 'good work', 'great work',
+                'nice work', 'awesome work', 'excellent work', 'superb work', 'fine job', 'amazing work',
+                'nice', 'great', 'awesome', 'super', 'superb', 'cool', 'excellent', 'wonderful',
+                'fantastic', 'amazing', 'brilliant', 'perfect', 'love it', 'looks good', 'sounds good',
+                'this is good', 'that is good', 'thats good', 'that’s good', 'very good', 'so good',
+                'good one', 'well explained', 'good explanation', 'nice explanation', 'great explanation',
+                'good ai', 'nice ai', 'smart ai', 'you are good', 'you are great', 'you are awesome'
+            }
+            clarified_compliment_pats = [
+                r'^(?:i\s+(?:told|said|meant|was\s+saying|told\s+you|told\s+u)\s+)?(?:you\s+did\s+a\s+)?(good\s+job|great\s+job|nice\s+job|well\s+done|good\s+work|nice\s+work|great\s+work|good|nice|great|awesome|super)\b',
+                r'\b(?:told|said|meant)\s+(?:good\s+job|great\s+job|nice\s+job|well\s+done|good|nice)\b',
+                r'\bi\s+(?:told|said)\s+(?:u\s+|you\s+)?good\s+job\b',
+                r'\bi\s+(?:told|said)\s+good\b'
+            ]
+            affirmation_exact = {
+                'ok', 'okay', 'fine', 'alright', 'all right', 'got it', 'i got it', 'understood',
+                'i understand', 'sure', 'yep', 'yeah', 'yes', 'no problem', 'noted', 'makes sense',
+                'clear', 'crystal clear', 'right', 'correct', 'exactly', 'k', 'kk'
+            }
+            misunderstanding_pats = [
+                r'\bmisinformation\b', r'\byou\s+misunderstood\b', r'\bmisunderstood\b',
+                r'\bwrong\s+answer\b', r'\bnot\s+what\s+i\s+(asked|said|meant)\b',
+                r'\bwhy\s+did\s+you\s+say\s+that\b', r'\bi\s+did\s+not\s+ask\s+that\b',
+                r'\bnot\s+this\b', r'\byou\s+are\s+wrong\b', r'\btrain\s+it\s+well\b',
+                r'\bunderstand\s+what\s+user\s+is\s+tell\b', r'\btaking\s+more\s+time\b'
+            ]
+
+            quick_ans = None
+            if p_clean_alpha in compliment_exact or any(re.search(pat, prompt_lower) for pat in clarified_compliment_pats):
+                quick_ans = "Thank you so much! I really appreciate your feedback and kind words. I'm glad I could help! If you have any other questions, topics, or code you'd like to work on, feel free to ask!"
+            elif p_clean_alpha in affirmation_exact or (len(clean_words) <= 2 and clean_words and clean_words[0] in ['ok', 'okay', 'fine', 'got']):
+                quick_ans = "Got it! What would you like to explore next? Feel free to ask any question, topic, or code problem!"
+            elif any(re.search(pat, prompt_lower) for pat in misunderstanding_pats):
+                quick_ans = (
+                    "I completely understand and sincerely apologize for the previous misunderstanding! "
+                    "I have refined my conversational understanding to accurately recognize your feedback, compliments, and exact questions without delay. "
+                    "I am ready to assist you quickly and accurately. Please let me know what specific topic, algorithm, or question you would like help with right now!"
+                )
+            elif any(cp in prompt_lower for cp in ['who is your creator', 'who created you', 'who made you', 'who is your god']):
+                quick_ans = (
+                    "I am **WorstAI**, a highly advanced artificial intelligence assistant created and developed by **GOLLU ADI VENKATA SAI**.\n\n"
+                    "As an AI, I do not have a deity or spiritual beliefs; my purpose is to assist you with accurate code, deep research, and instant answers."
+                )
+
+            if quick_ans:
+                session_data["messages"].append({"role": "user", "content": original_prompt, "agents": []})
+                session_data["messages"].append({"role": "ai", "content": quick_ans, "agents": ["WorstAI-Concierge"]})
+                save_sessions()
+                self.send_json({
+                    "success": True,
+                    "answer": quick_ans,
+                    "research": None,
+                    "agents_used": ["WorstAI-Concierge"]
+                })
+                return
             
             # 1. Perform Web Research if requested
             research_context = None
