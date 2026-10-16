@@ -1302,6 +1302,11 @@
         Continue with Google
       </button>
 
+      <!-- INSTANT GUEST ACCESS (NO AUTH LOCKOUT) -->
+      <button class="auth-btn btn-guest" onclick="continueAsGuest()" type="button" style="margin-top: 10px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #93c5fd; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease;">
+        <span style="font-size: 16px;">⚡</span> Continue as Guest (Instant Access)
+      </button>
+
       <div class="auth-divider">or continue with email</div>
 
       <!-- DIRECT EMAIL & PASSWORD LOGIN / REGISTRATION -->
@@ -1726,9 +1731,16 @@
     const userEmailDisplay = document.getElementById('user-email-display');
     const userAvatar = document.getElementById('user-avatar');
 
-    function showAuthError(msg) {
+    function showAuthError(msg, isHtml = false) {
       if (authSuccess) { authSuccess.innerText = ''; authSuccess.style.display = 'none'; }
-      if (authError) { authError.innerText = msg; authError.style.display = 'block'; }
+      if (authError) {
+        if (isHtml) {
+          authError.innerHTML = msg;
+        } else {
+          authError.innerText = msg;
+        }
+        authError.style.display = 'block';
+      }
     }
 
     function showAuthSuccess(msg) {
@@ -1950,7 +1962,21 @@
           auth.signInWithRedirect(provider);
         } else if (err.code === 'auth/unauthorized-domain') {
           const currentHost = window.location.hostname;
-          showAuthError(`Firebase Error: '${currentHost}' is not in Firebase Authorized Domains. Add '${currentHost}' in Firebase Console > Authentication > Settings > Authorized Domains.`);
+          showAuthError(`
+            <div style="font-size: 13px; line-height: 1.5; text-align: left;">
+              <strong style="color: #fca5a5; display: block; margin-bottom: 6px;">⚠️ Firebase Authorized Domain Required</strong>
+              <span>Domain <code>${currentHost}</code> is not in Firebase Authorized Domains.</span>
+              <div style="margin: 8px 0; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-size: 12px;">
+                <strong>To Fix Google Sign-In (Firebase Admin):</strong><br/>
+                1. Open <a href="https://console.firebase.google.com" target="_blank" style="color: #60a5fa; text-decoration: underline;">Firebase Console</a> &gt; <em>Authentication</em> &gt; <em>Settings</em><br/>
+                2. Under <strong>Authorized domains</strong>, click <em>Add domain</em><br/>
+                3. Add <code>${currentHost}</code> and click Save.
+              </div>
+              <button onclick="continueAsGuest()" type="button" style="width: 100%; margin-top: 6px; padding: 10px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <span>⚡</span> Continue as Guest Now (No Login Required)
+              </button>
+            </div>
+          `, true);
         } else {
           showAuthError(err.message);
         }

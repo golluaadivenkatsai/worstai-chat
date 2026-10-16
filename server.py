@@ -336,7 +336,19 @@ class SwarmHandler(http.server.SimpleHTTPRequestHandler):
                     agents_used.append("Deep Research")
             
             # 2. Build Prompt for g4f with history
-            messages_for_ai = list(session_data["messages"])
+            # Prepend strict Academic & Study Guidelines so answers always provide Definition first, then Types
+            sys_guideline = (
+                "You are WorstAI, an ultra-fast academic AI knowledge tutor created by GOLLU ADI VENKATA SAI.\n\n"
+                "STUDY & ACADEMIC RESPONSE STRUCTURE (MANDATORY FOR ALL STUDY / SUBJECT QUESTIONS):\n"
+                "Whenever the user asks about ANY study, subject, science, or engineering topic:\n"
+                "1. Definition First: \"### 1. Definition\" -> 1-2 sentence simple, plain English explanation that anyone can easily read.\n"
+                "2. Types Second: \"### 2. Types of [Topic]\" -> Clearly bulleted or tabular list of major types with 1-line explanations.\n"
+                "3. How It Works: \"### 3. How It Works & Key Components\" -> Step-by-step clear operational points.\n"
+                "4. Real Example: \"### 4. Real-World Practical Example\" -> Relatable everyday analogy or application.\n"
+                "5. Exam Revision: \"### 5. High-Yield Exam Memory Tip\" -> 2-3 quick bullet points.\n"
+                "Use simple English, bold key terms, and avoid dense jargon or wrapping math in dollar signs."
+            )
+            messages_for_ai = [{"role": "system", "content": sys_guideline}] + list(session_data["messages"])
             if use_research and research_context and research_context != "No external research found.":
                 messages_for_ai.append({"role": "system", "content": f"Use this recent research to help answer the user: {research_context}"})
             
