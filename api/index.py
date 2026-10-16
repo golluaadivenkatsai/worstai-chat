@@ -94,12 +94,21 @@ SHORT_FORMS = {
     r'\blc\s*#?(\d+)\b': r'leetcode \1',
     r'\bq(\d+)\b': r'leetcode \1',
 
-    # ── CS SUBJECT ABBREVIATIONS ──────────────────────────────────────────
+    # ── SUBJECT SHORTCUTS QUERY ALIASES ───────────────────────────────────
+    r'\b(?:short\s*cuts?|shortcuts?)\s+of\s+subject(?:s|\s+related)?\b': 'cs subject shortcuts master guide',
+    r'\b(?:cs|engineering|subject)\s+(?:short\s*cuts?|shortcuts?|abbreviations?)\b': 'cs subject shortcuts master guide',
+    r'\b(?:short\s*cuts?|shortcuts?)\s+(?:of\s+)?cs\s+subjects?\b': 'cs subject shortcuts master guide',
+
+    # ── CS CORE SUBJECT ABBREVIATIONS ──────────────────────────────────────
     # Operating Systems
     r'\bos\b': 'operating system',
+    r'\bos concepts\b': 'operating system concepts',
     # Data Structures & Algorithms
     r'\bdsa\b': 'data structures and algorithms',
     r'\bds\b': 'data structures',
+    r'\bdaa\b': 'design and analysis of algorithms daa',
+    r'\bada\b': 'analysis and design of algorithms',
+    r'\bads\b': 'advanced data structures',
     # Database Management Systems
     r'\bdbms\b': 'database management system',
     r'\bdb\b': 'database',
@@ -115,33 +124,66 @@ SHORT_FORMS = {
     r'\bco\b': 'computer organization',
     # Theory of Computation
     r'\btoc\b': 'theory of computation',
+    r'\bflat\b': 'formal languages and automata theory',
     r'\btom\b': 'theory of machines',
     r'\bfl\b': 'formal languages',
     r'\bpda\b': 'pushdown automaton',
     r'\bdfa\b': 'deterministic finite automaton',
     r'\bnfa\b': 'nondeterministic finite automaton',
     r'\bcfg\b': 'context free grammar',
+    r'\bcfl\b': 'context free language',
+    r'\btm\b': 'turing machine',
     # Compiler Design
     r'\bcd\b': 'compiler design',
     # Software Engineering
     r'\bse\b': 'software engineering',
     r'\bsdlc\b': 'software development life cycle sdlc',
-    # Artificial Intelligence / ML
+    r'\bstm\b': 'software testing methodologies stm',
+    r'\bst\b': 'software testing',
+    # Artificial Intelligence / ML / DL / NLP
     r'\bai\b': 'artificial intelligence',
     r'\bml\b': 'machine learning',
     r'\bdl\b': 'deep learning',
     r'\bnlp\b': 'natural language processing',
     r'\brl\b': 'reinforcement learning',
+    r'\bcv\b': 'computer vision',
     r'\bnn\b': 'neural network',
     r'\blstm\b': 'long short term memory lstm',
+    r'\bcnn\b': 'convolutional neural network cnn',
+    r'\brnn\b': 'recurrent neural network rnn',
+    r'\bsvm\b': 'support vector machine svm',
+    r'\bknn\b': 'k nearest neighbors knn',
     # Object Oriented Programming
     r'\boop\b': 'object oriented programming',
     r'\boops\b': 'object oriented programming concepts',
-    # Discrete Mathematics
+    # Web Technologies
+    r'\bwt\b': 'web technologies wt',
+    # Cryptography & Network Security
+    r'\bcns\b': 'cryptography and network security cns',
+    r'\bns\b': 'network security',
+    r'\bis\b': 'information security',
+    r'\bcrypto\b': 'cryptography',
+    # Cloud Computing
+    r'\bcc\b': 'cloud computing cc',
+    r'\bcloud\b': 'cloud computing',
+    # Internet of Things
+    r'\biot\b': 'internet of things iot',
+    # Big Data Analytics & Mining
+    r'\bbda\b': 'big data analytics bda',
+    r'\bbig data\b': 'big data analytics',
+    r'\bdwdm\b': 'data warehousing and data mining dwdm',
     r'\bdm\b': 'discrete mathematics',
-    # Dynamic Programming
+    r'\bmfcs\b': 'mathematical foundations of computer science mfcs',
+    # Digital Logic Design & Microprocessors
+    r'\bdld\b': 'digital logic design dld',
+    r'\bde\b': 'digital electronics',
+    r'\bmpi\b': 'microprocessors and interfacing mpi',
+    r'\bmp\b': 'microprocessors',
+    # Probability and Statistics
+    r'\bp&s\b': 'probability and statistics',
+    r'\bpns\b': 'probability and statistics',
+    # Dynamic Programming & Graphs
     r'\bdp\b': 'dynamic programming',
-    # Data Structures specifics
     r'\bll\b': 'linked list',
     r'\bbst\b': 'binary search tree',
     r'\bavl\b': 'avl tree self balancing',
@@ -150,6 +192,11 @@ SHORT_FORMS = {
     r'\bmst\b': 'minimum spanning tree',
     r'\blru\b': 'lru least recently used cache replacement',
     r'\bkmp\b': 'kmp knuth morris pratt string matching',
+    # CPU Scheduling
+    r'\bfcfs\b': 'first come first served fcfs scheduling',
+    r'\bsjf\b': 'shortest job first sjf scheduling',
+    r'\bsrtf\b': 'shortest remaining time first srtf scheduling',
+    r'\brr\b': 'round robin rr scheduling',
     # GATE Exam
     r'\bgate cse\b': 'gate computer science engineering syllabus',
     # Common shortcuts
@@ -169,6 +216,10 @@ SHORT_FORMS = {
     r'\btcp\b': 'tcp transmission control protocol',
     r'\budp\b': 'udp user datagram protocol',
     r'\bdns\b': 'dns domain name system',
+    r'\bosi\b': 'osi model',
+    r'\bcidr\b': 'classless inter domain routing cidr subnetting',
+    r'\brisc\b': 'risc reduced instruction set computer',
+    r'\bcisc\b': 'cisc complex instruction set computer',
 }
 
 def normalize_query_and_short_forms(query: str) -> str:
@@ -938,35 +989,25 @@ def should_perform_research(query: str) -> bool:
     if any(cp in q for cp in creator_patterns):
         return False
 
-    # 3. Always search for coding problems, leetcode, GATE questions, MCQs, algorithms, error messages
-    code_indicators = [
-        'leetcode', 'codeforces', 'hackerrank', 'geeksforgeeks', 'problem', 'solution', 
-        'error', 'exception', 'syntax', 'api', 'library', 'framework', 'algorithm',
-        'bug', 'function', 'class', 'method', 'runtime', 'complexity', 'design',
-        'gate', 'gateoverflow', 'mcq', 'option', 'which of the following', 'ugc net',
-        'isro', 'exam', 'question', 'calculate', 'prove', 'derivation'
-    ]
-    if any(ci in q for ci in code_indicators):
+    # 3. Always search for specific coding challenges with numbers, contest problems, error logs
+    if any(k in q for k in ['leetcode', 'codeforces', 'hackerrank', 'gateoverflow']) or \
+       bool(re.search(r'\bgate\s*(?:19|20)\d\d\b', q)) or \
+       any(k in q for k in ['traceback', 'exception', 'stack trace', 'syntaxerror', 'runtimeerror', 'nullpointerexception']):
         return True
 
-    # 4. Temporal / live keywords
+    # 4. Temporal / live keywords (always search live data for these)
     live_keywords = [
         'weather', 'climate', 'temperature', 'forecast', 'rain', 'news', 'today', 
         'yesterday', 'current', 'live', 'latest', 'recent', 'who won', 'match', 
         'score', 'ipl', 'cricket', 'election', 'stock', 'price of', 'released', 
-        'upcoming', 'when is', '2026', '2025', 'near me', 'nearby', 'traffic',
-        'à°µà°¾à°¤à°¾à°µà°°à°£à°‚', 'à°µà°¾à°°à±à°¤à°²à±', 'à°ˆà°°à±‹à°œà±', 'à°‡à°ªà±à°ªà±à°¡à±'
+        'upcoming', 'when is', '2026', '2025', 'near me', 'nearby', 'traffic'
     ]
     if any(k in q for k in live_keywords):
         return True
 
-    # 5. Queries with 3+ words: only research if informational / educational, never for conversational speech
-    non_research_conversational = ['i told', 'i said', 'good job', 'well done', 'you are', 'thank you', 'thanks a', 'so good', 'very good']
-    if any(nrc in q for nrc in non_research_conversational):
-        return False
-
-    informational_triggers = ['who is', 'what is', 'where is', 'when did', 'how does', 'explain', 'history of', 'features of', 'difference between', 'vs']
-    if any(it in q for it in informational_triggers) and len(q.split()) >= 3:
+    # 5. Specific real-world entity lookups (celebrities, companies, politicians, release dates)
+    entity_lookups = ['who is', 'who was', 'founder of', 'ceo of', 'president of', 'net worth of', 'release date of', 'when was', 'where was']
+    if any(el in q for el in entity_lookups) and len(q.split()) >= 3 and not any(k in q for k in ['worstai', 'adi', 'gollu', 'algorithm', 'data structure', 'class', 'object', 'function']):
         return True
 
     return False
@@ -1006,7 +1047,7 @@ def run_web_research(query, location_context=''):
         # 1. Race the search engines to find URLs & snippets instantly
         executor1 = concurrent.futures.ThreadPoolExecutor(max_workers=len(search_engines))
         futures = {executor1.submit(engine, search_query, 4): engine for engine in search_engines}
-        for future in concurrent.futures.as_completed(futures, timeout=1.6):
+        for future in concurrent.futures.as_completed(futures, timeout=0.9):
             try:
                 res = future.result()
                 if res:
@@ -1053,7 +1094,7 @@ def run_web_research(query, location_context=''):
         for sr in search_results[:2]:
             future_to_task[executor2.submit(fetch_page, sr)] = "fetch_page"
             
-        for future in concurrent.futures.as_completed(future_to_task, timeout=1.4):
+        for future in concurrent.futures.as_completed(future_to_task, timeout=0.8):
             try:
                 result = future.result()
                 if result:
@@ -1291,6 +1332,69 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
     - High-Yield Exam Memory Points
     """
     q = normalize_query_and_short_forms(prompt).lower().strip()
+
+    # 0.5 Master Guide: CS & Engineering Subject Shortcuts & Full Forms
+    if any(k in q for k in [
+        'cs subject shortcuts', 'shortcuts of subject', 'subject shortcuts', 'cs shortcuts',
+        'engineering shortcuts', 'subject short cuts', 'subject abbreviations', 'cs abbreviations',
+        'subject acronyms', 'subject shortcut', 'shortcuts of subjects'
+    ]):
+        return (
+            "## Master Guide: Computer Science & Engineering Subject Shortcuts & Full Forms\n\n"
+            "Here is the comprehensive, official master reference table of all core Computer Science & Engineering (B.Tech / GATE CSE / IT) subject abbreviations, full forms, key focus areas, and exam weightage:\n\n"
+            "---\n\n"
+            "### 1. Core Computer Science Subjects Reference Table\n\n"
+            "| Shortcut | Full Subject Name | Primary Sub-Topics & Concepts | Typical GATE Weightage |\n"
+            "|---|---|---|---|\n"
+            "| **OS** | **Operating Systems** | Process scheduling (FCFS, SJF, RR), Deadlock (Coffman, Banker's), Paging & Virtual Memory, Semaphores | 8 – 10 Marks |\n"
+            "| **DBMS** | **Database Management Systems** | ER Models, Normalization (1NF–BCNF), SQL/Relational Algebra, ACID, Concurrency (2PL, Serializability), B+ Trees | 7 – 9 Marks |\n"
+            "| **CN** | **Computer Networks** | OSI 7-Layer vs. TCP/IP, IP Addressing & Subnetting (CIDR), Flow Control (Stop & Wait, GBN, SR), TCP/UDP, Routing (OSPF, RIP, BGP) | 7 – 9 Marks |\n"
+            "| **COA / CAO** | **Computer Organization & Architecture** | Instruction Pipelining & Hazards, Cache Mapping (Direct, Set-Associative), Addressing Modes, RISC vs CISC, Memory Hierarchy | 7 – 9 Marks |\n"
+            "| **TOC / FLAT** | **Theory of Computation / Formal Languages** | Chomsky Hierarchy, Regular Expressions, DFA/NFA equivalence, PDA & Context-Free Languages, Turing Machines, Decidability | 8 – 10 Marks |\n"
+            "| **CD** | **Compiler Design** | 6 Phases of Compiler, Lexical Analysis, Parsers (LL(1), LR(0), SLR(1), LALR, CLR), Syntax Directed Translation (SDT), Code Optimization | 4 – 5 Marks |\n"
+            "| **DSA / DS** | **Data Structures & Algorithms** | Arrays, Linked Lists, Stacks, Queues, Binary Trees, BST, AVL Trees, Heaps, Graphs (BFS/DFS), Hashing | 14 – 18 Marks |\n"
+            "| **DAA / ADA** | **Design & Analysis of Algorithms** | Asymptotic Notations (Big-O, Omega, Theta), Master Theorem, Divide & Conquer, Greedy, Dynamic Programming, NP-Completeness | 6 – 8 Marks |\n"
+            "| **SE** | **Software Engineering** | SDLC Models (Waterfall, Agile Scrum, Spiral, V-Model), SOLID Principles, Testing (Black-Box, White-Box), McCabe Cyclomatic Complexity | 3 – 5 Marks |\n"
+            "| **AI** | **Artificial Intelligence** | Intelligent Agents (PEAS), Uninformed & Heuristic Search (BFS, DFS, A*), Game Playing (Minimax, Alpha-Beta Pruning), Knowledge Representation | 3 – 6 Marks |\n"
+            "| **ML** | **Machine Learning** | Supervised (Regression, Classification, SVM, Decision Trees), Unsupervised (K-Means, PCA), Bias-Variance Tradeoff, Evaluation (Precision, Recall, F1) | 4 – 6 Marks |\n"
+            "| **DL** | **Deep Learning** | Perceptrons, Multi-Layer Perceptrons, Backpropagation, CNN, RNN/LSTM, Transformers & Attention Mechanism | 3 – 5 Marks |\n"
+            "| **WT** | **Web Technologies** | 3-Tier Web Architecture, HTML5/CSS3/JavaScript, DOM manipulation, REST APIs, HTTP Methods (GET, POST, PUT, DELETE), JSON, AJAX | College / Lab |\n"
+            "| **CNS / IS** | **Cryptography & Network Security** | Symmetric (AES, DES) vs Asymmetric (RSA, ECC), Diffie-Hellman, SHA-256 Hashes, Digital Signatures, Firewalls, SSL/TLS | 4 – 6 Marks |\n"
+            "| **CC** | **Cloud Computing** | NIST Cloud Model, Service Models (IaaS, PaaS, SaaS), Deployment (Public, Private, Hybrid), Virtualization (Type 1 & 2 Hypervisors), Docker | 3 – 5 Marks |\n"
+            "| **IOT** | **Internet of Things** | 4-Layer Architecture, Sensors & Actuators, MQTT vs CoAP Protocols, Arduino vs Raspberry Pi, Edge Computing | 3 – 5 Marks |\n"
+            "| **BDA** | **Big Data Analytics** | 5 V's of Big Data, Hadoop Ecosystem, HDFS Architecture (NameNode/DataNodes), MapReduce, Apache Spark RDDs & DataFrames | 3 – 5 Marks |\n"
+            "| **STM / ST** | **Software Testing Methodologies** | Verification vs Validation, Unit/Integration/System/Acceptance Testing, Equivalence Partitioning, Boundary Value Analysis, Test Matrices | College / Lab |\n"
+            "| **DLD / DE** | **Digital Logic Design / Electronics** | Boolean Algebra & De Morgan's, K-Maps, Multiplexers, Decoders, Latches vs Flip-Flops (SR, JK, D, T), Counters, Registers | 5 – 7 Marks |\n"
+            "| **MP / MPI** | **Microprocessors & Interfacing** | Intel 8086 Architecture (BIU, EU, 20-bit address bus = 1MB RAM), Memory Segmentation, Pin diagram, 8086 vs 8051 Microcontroller | 4 – 6 Marks |\n"
+            "| **DM / MFCS** | **Discrete Mathematics** | Propositional & Predicate Logic, Set Theory, Relations, Combinatorics, Pigeonhole Principle, Graph Theory (Euler, Hamilton), Planar Graphs | 7 – 9 Marks |\n"
+            "| **P&S** | **Probability & Statistics** | Discrete & Continuous Distributions (Binomial, Poisson, Normal), Conditional Probability, Bayes' Theorem, Expectation, Variance | 5 – 7 Marks |\n\n"
+            "---\n\n"
+            "### 2. High-Frequency Technical Sub-Topic Shortcuts\n\n"
+            "| Shortcut | Expanded Term | Area / Subject | Key Exam Formula or Rule |\n"
+            "|---|---|---|---|\n"
+            "| **FCFS** | First-Come First-Served | OS Scheduling | Non-preemptive; susceptible to Convoy Effect |\n"
+            "| **SJF / SRTF** | Shortest Job First / Remaining Time First | OS Scheduling | Optimal minimum average waiting time; starvation possible |\n"
+            "| **RR** | Round Robin | OS Scheduling | Preemptive timesharing using fixed Time Quantum (q) |\n"
+            "| **PCB / TCB** | Process / Thread Control Block | OS Concurrency | Kernel structures holding registers, state, and PC |\n"
+            "| **TLB** | Translation Lookaside Buffer | OS Paging | Hardware associative cache; EMAT = h*(c+m) + (1-h)*(c+2m) |\n"
+            "| **ACID** | Atomicity, Consistency, Isolation, Durability | DBMS Transactions | Core transaction guarantees for fault-tolerant RDBMS |\n"
+            "| **2PL** | Two-Phase Locking | DBMS Concurrency | Growing phase (locks acquired) -> Shrinking phase (locks released) |\n"
+            "| **1NF / 2NF / 3NF / BCNF** | Normal Forms | DBMS Normalization | Eliminates insertion, deletion, and update anomalies |\n"
+            "| **CIDR** | Classless Inter-Domain Routing | CN Subnetting | Usable hosts per subnet = 2^(32 - prefix) - 2 |\n"
+            "| **OSI** | Open Systems Interconnection | CN Protocols | 7 Layers: Physical, Data Link, Network, Transport, Session, Presentation, Application |\n"
+            "| **RISC / CISC** | Reduced / Complex Instruction Set Computer | COA Architecture | RISC has uniform 1-word instructions, hardwired control, load/store only |\n"
+            "| **DFA / NFA** | Deterministic / Nondeterministic Finite Automata | TOC Automata | Expressive power is equal (DFA == NFA) |\n"
+            "| **PDA** | Pushdown Automaton | TOC Automata | Automaton with stack memory for Context-Free Languages (CFL) |\n"
+            "| **TM** | Turing Machine | TOC Automata | Mathematical model of universal computation (Type-0 languages) |\n"
+            "| **SOLID** | SRP, OCP, LSP, ISP, DIP | Software Engineering | 5 object-oriented design principles for maintainable software |\n"
+            "| **SVM** | Support Vector Machine | Machine Learning | Finds maximum-margin hyperplane separating classes |\n"
+            "| **KNN** | K-Nearest Neighbors | Machine Learning | Non-parametric instance-based lazy learner |\n"
+            "| **CNN / RNN** | Convolutional / Recurrent Neural Networks | Deep Learning | CNN for spatial/vision data; RNN for sequential/time-series data |\n\n"
+            "---\n\n"
+            "### 3. Golden Exam Tip & Revision Strategy\n"
+            "> *\"In competitive exams like GATE and university engineering vivas, examiners frequently use these short forms. Remembering the exact definition, the mathematical complexity ($O(N)$), and the primary trade-off will allow you to solve 80% of technical multiple-choice questions instantly without hesitation.\"*"
+        )
+
 
     # 0. A. Why WorstAI Models are Better Than All AI Models / Architecture
     if any(k in q for k in [
@@ -2066,9 +2170,10 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         )
 
     # 13. Compiler vs Interpreter & How a Compiler Works
-    if any(k in q for k in [
+    if any(re.search(pat, q) for pat in [r'\bcd\b']) or any(k in q for k in [
         'compiler', 'interpreter', 'how does a compiler work', 'how a compiler work',
-        'compiler vs interpreter', 'phases of compiler', 'compiler design', 'phases of a compiler'
+        'compiler vs interpreter', 'phases of compiler', 'compiler design', 'phases of a compiler',
+        'what is cd', 'tell me about cd', 'explain cd', 'cd notes', 'lexical analysis', 'syntax analysis'
     ]):
         return (
             "## Compiler vs. Interpreter & Phases of Language Translation\n\n"
@@ -2896,7 +3001,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
 
     # 32. Operating Systems: Core Architecture & Components
     if (re.search(r'\bos\b', q) and not any(k in q for k in ['ios', 'macos', 'centos', 'cosmos', 'chaos'])) or \
-       (any(k in q for k in ['operating system', 'operating systems', 'os architecture', 'components of os']) and not any(k in q for k in ['process vs thread', 'mutex', 'deadlock'])):
+       (any(k in q for k in ['operating system', 'operating systems', 'what is os', 'tell me about os', 'explain os', 'os notes', 'os architecture', 'components of os']) and not any(k in q for k in ['process vs thread', 'mutex', 'deadlock', 'fcfs', 'sjf', 'banker', 'page replacement'])):
         return (
             "## Operating Systems (OS): Core Concepts, Architecture & Components\n\n"
             "An **Operating System (OS)** is system software that acts as an intermediary between computer hardware and user applications. "
@@ -2924,7 +3029,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         )
 
     # 33. Database Management Systems: Architecture & Fundamentals
-    if re.search(r'\bdbms\b', q) or (any(k in q for k in ['database management system', 'database management systems', 'what is dbms', 'dbms architecture']) and not any(k in q for k in ['acid', 'normalization', 'primary key'])):
+    if re.search(r'\bdbms\b', q) or (any(k in q for k in ['database management system', 'database management systems', 'what is dbms', 'tell me about dbms', 'explain dbms', 'dbms notes', 'dbms architecture']) and not any(k in q for k in ['acid', 'normalization', 'primary key', 'transaction', 'serializability', '2pl'])):
         return (
             "## Database Management Systems (DBMS): Architecture, Models & Core Principles\n\n"
             "A **Database Management System (DBMS)** is a software system that facilitates the definition, creation, querying, and administration "
@@ -2953,7 +3058,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
 
     # 34. Computer Networks: Fundamentals, Protocols & Routing
     if (re.search(r'\bcn\b', q) and not any(k in q for k in ['cnn', 'c++'])) or \
-       (any(k in q for k in ['computer network', 'computer networks', 'networking fundamentals', 'cn architecture']) and not any(k in q for k in ['osi model', 'tcp vs udp', 'http vs https'])):
+       (any(k in q for k in ['computer network', 'computer networks', 'what is cn', 'tell me about cn', 'explain cn', 'cn notes', 'networking fundamentals', 'cn architecture']) and not any(k in q for k in ['osi model', 'tcp vs udp', 'http vs https', 'subnetting', 'ip address', 'cidr'])):
         return (
             "## Computer Networks (CN): Architecture, Protocol Stack & Flow Control\n\n"
             "A **Computer Network** is a distributed system of interconnected computing nodes communicating via standardized protocols "
@@ -2983,8 +3088,8 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         )
 
     # 35. Computer Organization & Architecture: Pipelining, Memory & Hazards
-    if any(re.search(pat, q) for pat in [r'\bcoa\b', r'\bcao\b']) or \
-       ('computer organization' in q or 'computer architecture' in q):
+    if any(re.search(pat, q) for pat in [r'\bcoa\b', r'\bcao\b', r'\bco\b']) or \
+       any(k in q for k in ['computer organization', 'computer architecture', 'what is coa', 'tell me about coa', 'explain coa', 'coa notes', 'coa full form']):
         return (
             "## Computer Organization & Architecture (COA): Pipelining, Cache & Hazards\n\n"
             "**Computer Organization & Architecture** investigates the operational units, hardware interconnection, and ISA (Instruction Set Architecture) "
@@ -3018,7 +3123,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
 
     # 36. Theory of Computation: Automata, Grammars & Decidability
     if any(re.search(pat, q) for pat in [r'\btoc\b', r'\bflat\b']) or \
-       ('theory of computation' in q or 'automata theory' in q or 'formal languages' in q):
+       any(k in q for k in ['theory of computation', 'automata theory', 'formal languages', 'what is toc', 'tell me about toc', 'explain toc', 'toc notes', 'what is flat']):
         return (
             "## Theory of Computation (TOC): Chomsky Hierarchy, Automata & Decidability\n\n"
             "**Theory of Computation** mathematically defines what can and cannot be computed efficiently using abstract machines "
@@ -3047,8 +3152,8 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         )
 
     # 37. Data Structures & Algorithms: Master Taxonomy & Asymptotic Bounds
-    if (re.search(r'\bdsa\b', q) and not any(k in q for k in ['dsas'])) or \
-       (any(k in q for k in ['data structures and algorithms', 'what is dsa', 'master dsa', 'dsa taxonomy']) and not any(k in q for k in ['stack vs queue', 'bfs vs dfs', 'array vs linked list'])):
+    if (re.search(r'\b(dsa|ds)\b', q) and not any(k in q for k in ['dsas'])) or \
+       (any(k in q for k in ['data structures and algorithms', 'data structures', 'data structure', 'what is dsa', 'what is ds', 'tell me about dsa', 'tell me about ds', 'master dsa', 'dsa taxonomy', 'ds notes']) and not any(k in q for k in ['stack vs queue', 'bfs vs dfs', 'array vs linked list', 'linked list', 'binary search tree', 'stack', 'queue'])):
         return (
             "## Data Structures & Algorithms (DSA): Master Classification & Complexity Bounds\n\n"
             "**Data Structures and Algorithms (DSA)** represent the foundational computational building blocks of software engineering, "
@@ -3357,8 +3462,9 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
 
 
     # 44. Object-Oriented Programming (OOP): Core Pillars & Principles
-    if any(k in q for k in [
+    if any(re.search(pat, q) for pat in [r'\b(oop|oops)\b']) or any(k in q for k in [
         'object oriented programming', 'object oriented', 'oop', 'oops concepts',
+        'what is oop', 'what is oops', 'tell me about oop', 'explain oop', 'oop notes',
         'encapsulation', 'inheritance', 'polymorphism', 'abstraction',
         'class and object', 'class vs object', 'oops'
     ]):
@@ -3408,10 +3514,11 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         )
 
     # 45. Software Engineering: SDLC Models & SOLID Principles
-    if any(k in q for k in [
+    if any(re.search(pat, q) for pat in [r'\bse\b']) or any(k in q for k in [
         'software engineering', 'sdlc', 'software development life cycle',
+        'what is se', 'tell me about se', 'explain se', 'se notes',
         'waterfall model', 'agile model', 'spiral model', 'software design',
-        'solid principles', 'software testing', 'se models', 'software life cycle',
+        'solid principles', 'se models', 'software life cycle',
         'v model', 'agile vs waterfall'
     ]):
         return (
@@ -3452,9 +3559,9 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         )
 
     # 46. Discrete Mathematics: Sets, Logic, Counting
-    if any(k in q for k in [
-        'discrete mathematics', 'discrete math', 'set theory',
-        'propositional logic', 'boolean algebra', 'pigeonhole principle',
+    if any(re.search(pat, q) for pat in [r'\bdm\b', r'\bmfcs\b']) or any(k in q for k in [
+        'discrete mathematics', 'discrete math', 'what is dm', 'tell me about dm', 'explain dm', 'dm notes',
+        'set theory', 'propositional logic', 'boolean algebra', 'pigeonhole principle',
         'permutation and combination', 'de morgans', 'euler formula',
         'handshaking lemma', 'inclusion exclusion', 'combinatorics'
     ]):
@@ -3494,10 +3601,11 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         )
 
     # 47. Machine Learning: Algorithms, Bias-Variance, Evaluation
-    if any(k in q for k in [
+    if any(re.search(pat, q) for pat in [r'\bml\b']) or any(k in q for k in [
+        'machine learning', 'what is ml', 'tell me about ml', 'explain ml', 'ml notes',
         'machine learning algorithms', 'supervised learning', 'unsupervised learning',
         'classification vs regression', 'linear regression', 'logistic regression',
-        'decision tree', 'random forest', 'support vector machine',
+        'decision tree', 'random forest', 'support vector machine', 'svm', 'knn',
         'gradient descent', 'ml algorithms', 'ml concepts',
         'bias variance tradeoff', 'overfitting', 'underfitting'
     ]):
@@ -3533,6 +3641,620 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "- **L1 (Lasso Regularization)**: Adds |w| penalty -> promotes sparsity (feature selection).\n"
             "- **L2 (Ridge Regularization)**: Adds w^2 penalty -> shrinks all weights smoothly.\n"
             "- **Precision**: TP / (TP + FP). **Recall**: TP / (TP + FN). **F1**: 2*P*R / (P+R)."
+        )
+
+
+    # 48. Artificial Intelligence (AI): Agents, Search & Heuristics
+    if any(re.search(pat, q) for pat in [r'\bai\b', r'\bartificial intelligence\b']) or any(k in q for k in [
+        'what is ai', 'tell me about ai', 'explain ai', 'ai notes', 'intelligent agents',
+        'peas framework', 'uninformed search', 'informed search', 'a* search', 'a star search',
+        'minimax algorithm', 'alpha beta pruning', 'heuristic search'
+    ]):
+        return (
+            "## Artificial Intelligence (AI): Agents, Search Strategies & Game Theory\n\n"
+            "**Artificial Intelligence (AI)** is the study and engineering of intelligent agents that perceive their environment "
+            "through sensors and take autonomous actions through actuators to maximize their probability of successfully achieving goals.\n\n"
+            "---\n\n"
+            "### 1. Intelligent Agent PEAS Framework\n"
+            "- **P (Performance Measure)**: The metric used to evaluate how successfully an agent achieves its objectives (e.g., speed, accuracy, profit).\n"
+            "- **E (Environment)**: The external world the agent operates in (e.g., roads, chess board, web database).\n"
+            "- **A (Actuators)**: Mechanisms through which the agent acts on the environment (e.g., robotic arms, display screen, motor wheels).\n"
+            "- **S (Sensors)**: Devices the agent uses to perceive inputs (e.g., cameras, lidar, keyboard input, temperature probes).\n\n"
+            "---\n\n"
+            "### 2. Search Algorithms Head-to-Head Comparison\n\n"
+            "| Algorithm | Type | Strategy | Time Complexity | Space Complexity | Complete? | Optimal? |\n"
+            "|---|---|---|---|---|---|---|\n"
+            "| **BFS** | Uninformed | Explores level by level | O(b^d) | O(b^d) (Keeps all in queue) | **Yes** (if b finite) | **Yes** (for uniform step costs) |\n"
+            "| **DFS** | Uninformed | Explores deepest path first | O(b^m) | **O(b*m)** (Linear memory) | No (infinite loops) | No |\n"
+            "| **Uniform Cost (Dijkstra)** | Uninformed | Expands lowest path cost g(n) | O(b^(1 + C*/eps)) | O(b^(1 + C*/eps)) | **Yes** | **Yes** |\n"
+            "| **Greedy Best-First** | Informed | Expands lowest heuristic h(n) | O(b^m) (worst) | O(b^m) | No | No |\n"
+            "| **A* Search** | Informed | Expands lowest f(n) = g(n) + h(n) | O(b^d) | O(b^d) | **Yes** | **Yes** (if h is Admissible) |\n\n"
+            "---\n\n"
+            "### 3. A* Heuristic Properties & Game Playing\n"
+            "- **Admissibility Condition**: A heuristic $h(n)$ is admissible if it never overestimates the true cost to reach the goal ($h(n) <= h^*(n)$ for all $n$). Guarantees tree-search optimality.\n"
+            "- **Consistency (Monotonicity)**: For every node $n$ and successor $n'$ with step cost $c(n, a, n')$, $h(n) <= c(n, a, n') + h(n')$. Guarantees graph-search optimality.\n"
+            "- **Minimax & Alpha-Beta Pruning**: Minimax recursively computes the best move assuming an optimal adversary. Alpha-Beta pruning maintains $\\alpha$ (best choice for MAX) and $\\beta$ (best choice for MIN); prunes branch whenever $\\alpha >= \\beta$ without altering the final minimax decision.\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **Optimal Alpha-Beta Ordering**: Perfectly ordered moves reduce time complexity from $O(b^d)$ down to $O(b^{d/2})$, doubling the effective search depth.\n"
+            "- **Manhattan Distance vs Euclidean Distance**: For 8-puzzle problems, Manhattan distance $h_2$ dominates misplaced tiles $h_1$ ($h_2(n) >= h_1(n)$), expanding fewer nodes while remaining admissible."
+        )
+
+    # 49. Deep Learning (DL) & Neural Networks
+    if any(re.search(pat, q) for pat in [r'\bdl\b', r'\bdeep learning\b']) or any(k in q for k in [
+        'what is dl', 'tell me about dl', 'explain dl', 'dl notes', 'neural network', 'neural networks',
+        'convolutional neural network', 'cnn', 'recurrent neural network', 'rnn', 'lstm',
+        'perceptron', 'backpropagation', 'activation functions', 'transformer architecture'
+    ]):
+        return (
+            "## Deep Learning (DL): Architectures, Backpropagation & Optimizers\n\n"
+            "**Deep Learning (DL)** is a specialized subset of Machine Learning based on Artificial Neural Networks with multiple "
+            "hidden layers that automatically extract hierarchical feature representations directly from raw data without manual feature engineering.\n\n"
+            "---\n\n"
+            "### 1. Common Activation Functions Reference Table\n\n"
+            "| Function | Mathematical Formulation | Output Range | Smooth Gradient? | Vanishing Gradient Risk? |\n"
+            "|---|---|---|---|---|\n"
+            "| **Sigmoid** | sigma(z) = 1 / (1 + e^(-z)) | (0, 1) | Yes | **High** (saturates near 0 and 1) |\n"
+            "| **Tanh** | tanh(z) = (e^z - e^(-z)) / (e^z + e^(-z)) | (-1, 1) | Yes (zero-centered) | **High** |\n"
+            "| **ReLU** | f(z) = max(0, z) | [0, inf) | Piecewise linear | **Low for z > 0** (Dying ReLU if z < 0) |\n"
+            "| **Leaky ReLU** | f(z) = max(alpha * z, z) (alpha = 0.01) | (-inf, inf) | Piecewise linear | **Zero** (eliminates dying ReLU) |\n"
+            "| **Softmax** | e^(z_i) / sum(e^(z_j)) | (0, 1), sums to 1.0 | Yes | N/A (Standard multi-class output) |\n\n"
+            "---\n\n"
+            "### 2. Core Deep Learning Architectures\n\n"
+            "| Architecture | Primary Layers / Units | Ideal Domain / Data | Key Mathematical Advantage |\n"
+            "|---|---|---|---|\n"
+            "| **MLP (Dense)** | Fully Connected Linear Layers + Non-linearities | Tabular structured data | Universal Function Approximator |\n"
+            "| **CNN** | Convolution (Kernel weights), Max/Avg Pooling | Computer Vision, Spatial grids | **Weight sharing** & **Translation invariance** |\n"
+            "| **RNN / LSTM** | Recurrent hidden state, Input/Forget/Output Gates | Time-series, Sequential text | Preserves long-term temporal dependencies |\n"
+            "| **Transformer** | Multi-Head Self-Attention, Feed-Forward, LayerNorm | NLP, Vision, Multimodal LLMs | Parallel token processing; eliminates sequential bottleneck |\n\n"
+            "---\n\n"
+            "### 3. Backpropagation & Optimization\n"
+            "- **Chain Rule of Calculus**: Computes partial derivative of Loss $L$ with respect to weight $w_{ij}$: $\\frac{\\partial L}{\\partial w_{ij}} = \\frac{\\partial L}{\\partial y} \\cdot \\frac{\\partial y}{\\partial z} \\cdot \\frac{\\partial z}{\\partial w_{ij}}$.\n"
+            "- **Adam Optimizer**: Combines **Momentum** (first moment: moving average of gradients $m_t$) and **RMSprop** (second moment: moving average of squared gradients $v_t$) with bias correction: $\\theta_{t+1} = \\theta_t - \\frac{\\eta}{\\sqrt{\\hat{v}_t} + \\epsilon} \\hat{m}_t$.\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **Transformer Attention Formula**: $\\text{Attention}(Q, K, V) = \\text{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V$. Division by $\\sqrt{d_k}$ prevents gradient vanishing when $d_k$ is large.\n"
+            "- **Overfitting Prevention**: Dropout (randomly zeroes activations during training), Weight Decay (L2 penalty), Batch Normalization, and Early Stopping."
+        )
+
+    # 50. Design and Analysis of Algorithms (DAA)
+    if any(re.search(pat, q) for pat in [r'\bdaa\b', r'\bada\b']) or any(k in q for k in [
+        'design and analysis of algorithms', 'what is daa', 'tell me about daa', 'explain daa', 'daa notes',
+        'asymptotic notation', 'asymptotic notations', 'master theorem', 'divide and conquer',
+        'greedy method', 'np complete', 'np-complete', 'p vs np', 'polynomial time reduction'
+    ]):
+        return (
+            "## Design and Analysis of Algorithms (DAA): Asymptotic bounds & Paradigms\n\n"
+            "**Design and Analysis of Algorithms (DAA)** explores the mathematical formulation, design paradigms, "
+            "and computational complexity bounds of algorithms, classifying problems by algorithmic tractability.\n\n"
+            "---\n\n"
+            "### 1. Asymptotic Notations Reference Table\n\n"
+            "| Notation | Name | Mathematical Condition (for n >= n0, c > 0) | Meaning |\n"
+            "|---|---|---|---|\n"
+            "| **O(g(n))** | Big-O | 0 <= f(n) <= c * g(n) | **Asymptotic Upper Bound** (Worst-case ceiling) |\n"
+            "| **Omega(g(n))** | Big-Omega | 0 <= c * g(n) <= f(n) | **Asymptotic Lower Bound** (Best-case floor) |\n"
+            "| **Theta(g(n))** | Big-Theta | c1 * g(n) <= f(n) <= c2 * g(n) | **Asymptotically Tight Bound** |\n"
+            "| **o(g(n))** | Little-o | 0 <= f(n) < c * g(n) (limit f/g = 0) | Strict Upper Bound (Non-tight) |\n"
+            "| **omega(g(n))** | Little-omega | 0 <= c * g(n) < f(n) (limit f/g = inf) | Strict Lower Bound (Non-tight) |\n\n"
+            "---\n\n"
+            "### 2. Master Theorem for Divide-and-Conquer Recurrences\n"
+            "For recurrences of the form: $T(n) = a T(n/b) + f(n)$ where $a >= 1, b > 1$:\n"
+            "- **Case 1**: If $f(n) = O(n^{\\log_b a - \\epsilon})$ for $\\epsilon > 0$ => **$T(n) = \\Theta(n^{\\log_b a})$** (Tree leaf-heavy).\n"
+            "- **Case 2**: If $f(n) = \\Theta(n^{\\log_b a} \\log^k n)$ for $k >= 0$ => **$T(n) = \\Theta(n^{\\log_b a} \\log^{k+1} n)$** (Even distribution).\n"
+            "- **Case 3**: If $f(n) = \\Omega(n^{\\log_b a + \\epsilon})$ and regularity condition holds ($a f(n/b) <= c f(n)$ for $c < 1$) => **$T(n) = \\Theta(f(n))$** (Root-heavy).\n\n"
+            "---\n\n"
+            "### 3. Computational Complexity Classes (P, NP, NP-Complete, NP-Hard)\n"
+            "- **Class P**: Decision problems solvable in deterministic polynomial time ($O(n^k)$). Examples: Sorting, Shortest Path, Minimum Spanning Tree.\n"
+            "- **Class NP**: Decision problems verifiable in polynomial time by a deterministic Turing machine (or solvable by Non-Deterministic TM in polynomial time).\n"
+            "- **NP-Hard**: A problem $X$ such that every problem in NP can be polynomial-time reduced to $X$ ($L \\le_p X$). $X$ does not need to be in NP.\n"
+            "- **NP-Complete**: A problem $X$ that is **both in NP and NP-Hard**. If any NP-Complete problem is solved in $P$, then $P = NP$. Examples: 3-SAT (Cook-Levin Theorem), Traveling Salesperson Problem (decision version), Vertex Cover, Clique, Subset Sum.\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **Cook-Levin Theorem (1971)**: Proved that Boolean Satisfiability (SAT) is the first NP-Complete problem.\n"
+            "- **Fractional vs 0/1 Knapsack**: Fractional Knapsack is solved optimally by Greedy method in $O(N \\log N)$; 0/1 Knapsack requires Dynamic Programming ($O(N \\cdot W)$ pseudo-polynomial)."
+        )
+
+    # 51. Web Technologies (WT)
+    if any(re.search(pat, q) for pat in [r'\bwt\b', r'\bweb technologies\b']) or any(k in q for k in [
+        'what is wt', 'tell me about wt', 'explain wt', 'wt notes', 'client server architecture',
+        'rest api', 'restful api', 'http methods', 'html5 css3 javascript', 'ajax and json', 'dom manipulation'
+    ]):
+        return (
+            "## Web Technologies (WT): Architecture, REST APIs & Full-Stack Lifecycle\n\n"
+            "**Web Technologies** encompass the protocols, languages, and client-server architectures used to construct, "
+            "exchange, and render interactive digital applications across the World Wide Web.\n\n"
+            "---\n\n"
+            "### 1. 3-Tier Web Application Architecture\n"
+            "1. **Presentation Tier (Client / Frontend)**: Renders UI and captures user input (HTML5 semantic structure, CSS3 styling, JavaScript/TypeScript, React/Vue).\n"
+            "2. **Application / Business Logic Tier (Backend Server)**: Processes requests, enforces security rules, and handles business domain logic (Node.js, Python FastAPI/Django, Java Spring Boot).\n"
+            "3. **Data Tier (Database Server)**: Persistent storage and transactional query processing (PostgreSQL, MySQL, MongoDB, Redis caching).\n\n"
+            "---\n\n"
+            "### 2. HTTP Request Methods & Status Codes\n\n"
+            "| HTTP Method | CRUD Operation | Idempotent? | Safe? | Description |\n"
+            "|---|---|---|---|---|\n"
+            "| **GET** | Read | **Yes** | **Yes** | Retrieves resource without side effects |\n"
+            "| **POST** | Create | No | No | Submits data to create a new subordinate resource |\n"
+            "| **PUT** | Update / Replace | **Yes** | No | Replaces target resource completely with request payload |\n"
+            "| **PATCH** | Partial Update | No | No | Applies partial modifications to a resource |\n"
+            "| **DELETE** | Delete | **Yes** | No | Removes target resource |\n\n"
+            "**Key HTTP Status Codes:**\n"
+            "- `200 OK`: Request succeeded. `201 Created`: Resource successfully created.\n"
+            "- `301 Moved Permanently`: Permanent URL redirection.\n"
+            "- `400 Bad Request`: Malformed syntax. `401 Unauthorized`: Authentication missing. `403 Forbidden`: Authenticated but lacks permissions. `404 Not Found`: Target resource does not exist.\n"
+            "- `500 Internal Server Error`: Unhandled server-side exception. `503 Service Unavailable`: Server overloaded/maintenance.\n\n"
+            "---\n\n"
+            "### 3. REST Architectural Constraints\n"
+            "1. **Statelessness**: Every request from client to server must contain all information required to understand and process the request. No session state is retained on the server.\n"
+            "2. **Client-Server Separation**: UI concerns separated from data storage concerns.\n"
+            "3. **Cacheability**: Responses must explicitly label themselves as cacheable or non-cacheable to optimize bandwidth.\n"
+            "4. **Uniform Interface**: Resource identification in requests (URIs) and resource manipulation through representations.\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **DOM Event Phases**: Event flow proceeds through 3 phases: `Capturing Phase (down from Window to target) -> Target Phase -> Bubbling Phase (up from target to Window)`.\n"
+            "- **CORS (Cross-Origin Resource Sharing)**: Browser security policy enforcing Same-Origin Rule unless destination server explicitly issues `Access-Control-Allow-Origin` headers."
+        )
+
+    # 52. Cryptography & Network Security (CNS)
+    if any(re.search(pat, q) for pat in [r'\bcns\b', r'\bcryptography\b', r'\bnetwork security\b']) or any(k in q for k in [
+        'what is cns', 'tell me about cns', 'explain cns', 'cns notes', 'symmetric vs asymmetric',
+        'rsa algorithm', 'diffie hellman', 'digital signature', 'sha-256', 'firewall', 'man in the middle'
+    ]):
+        return (
+            "## Cryptography & Network Security (CNS): Ciphers, Hashes & Network Defenses\n\n"
+            "**Cryptography & Network Security** establishes mathematical foundations and operational protocols to guarantee the "
+            "**CIA Triad** (Confidentiality, Integrity, and Availability) of data transmitted across insecure communication channels.\n\n"
+            "---\n\n"
+            "### 1. Symmetric vs. Asymmetric Encryption Head-to-Head\n\n"
+            "| Feature | Symmetric Cryptography | Asymmetric (Public Key) Cryptography |\n"
+            "|---|---|---|\n"
+            "| **Key Pair** | Single shared secret key for encryption & decryption | Two keys: Public Key (encrypt) and Private Key (decrypt) |\n"
+            "| **Execution Speed** | **Ultra-Fast** (Hardware-accelerated bitwise operations) | **Slow** (Heavy modular exponentiation math) |\n"
+            "| **Key Distribution** | Difficult: Shared key must be exchanged securely beforehand | Simple: Public key distributed openly worldwide |\n"
+            "| **Primary Systems** | **AES (128/192/256-bit)**, DES, 3DES, ChaCha20 | **RSA (2048/4096-bit)**, ECC (Elliptic Curve), Diffie-Hellman |\n"
+            "| **Common Use Case** | Bulk payload and database disk encryption | Key exchange (TLS handshake) & Digital Signatures |\n\n"
+            "---\n\n"
+            "### 2. RSA Public-Key Mathematical Engine\n"
+            "1. **Select two large prime numbers**: $p$ and $q$.\n"
+            "2. **Compute modulus**: $n = p \\cdot q$. Compute Euler's totient: $\\phi(n) = (p - 1)(q - 1)$.\n"
+            "3. **Choose public exponent $e$**: Such that $1 < e < \\phi(n)$ and $\\gcd(e, \\phi(n)) = 1$ (typically $e = 65537$).\n"
+            "4. **Compute private key $d$**: $d \\equiv e^{-1} \\pmod{\\phi(n)}$ (Modular multiplicative inverse: $e \\cdot d \\equiv 1 \\pmod{\\phi(n)}$).\n"
+            "5. **Encryption**: Ciphertext $C = M^e \\bmod n$.\n"
+            "6. **Decryption**: Plaintext $M = C^d \\bmod n$.\n\n"
+            "---\n\n"
+            "### 3. Diffie-Hellman Key Exchange & Digital Signatures\n"
+            "- **Diffie-Hellman Key Exchange**: Allows two parties to negotiate a shared secret over an untrusted medium without transmitting the secret itself: Alice computes $K = B^a \\bmod p$, Bob computes $K = A^b \\bmod p$. Security relies on the **Discrete Logarithm Problem**.\n"
+            "- **Digital Signatures**: Provide **Authentication, Integrity, and Non-Repudiation**. Sender hashes message $H = \\text{SHA-256}(M)$, encrypts hash using **Sender's Private Key** to create signature $S$. Receiver decrypts $S$ using **Sender's Public Key** and verifies it matches their own computed hash.\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **Avalanche Effect**: Desirable cryptographic property where changing a single input bit flips at least 50% of output ciphertext bits.\n"
+            "- **Firewall Types**: Packet Filtering (inspects IP/Port headers, stateless), Stateful Inspection (tracks TCP 3-way handshake state), Application Gateway / Proxy (inspects Layer 7 payloads)."
+        )
+
+    # 53. Cloud Computing (CC)
+    if any(re.search(pat, q) for pat in [r'\bcc\b', r'\bcloud computing\b']) or any(k in q for k in [
+        'what is cc', 'tell me about cc', 'explain cc', 'cc notes', 'what is cloud', 'iaas paas saas',
+        'cloud service models', 'cloud deployment models', 'virtualization', 'type 1 vs type 2 hypervisor', 'docker vs vm'
+    ]):
+        return (
+            "## Cloud Computing (CC): NIST Model, Service Paradigms & Virtualization\n\n"
+            "**Cloud Computing** is the on-demand delivery of compute power, database storage, applications, and other IT resources "
+            "over the Internet via a pay-as-you-go pricing model with zero upfront infrastructure capital expenditures.\n\n"
+            "---\n\n"
+            "### 1. NIST 5 Essential Characteristics of Cloud Computing\n"
+            "1. **On-Demand Self-Service**: Consumers provision computing resources (CPU, storage) automatically without requiring human interaction with the service provider.\n"
+            "2. **Broad Network Access**: Capabilities available over the network and accessed through standard mechanisms (web, mobile, APIs).\n"
+            "3. **Resource Pooling**: Multi-tenant model where physical resources are dynamically assigned and reassigned according to consumer demand.\n"
+            "4. **Rapid Elasticity**: Resources can be elastically provisioned and released to scale outward or inward commensurate with demand.\n"
+            "5. **Measured Service**: Resource usage is monitored, controlled, and reported transparently (metered pay-per-use).\n\n"
+            "---\n\n"
+            "### 2. Cloud Service Models (SPI Model)\n\n"
+            "| Model | Full Name | Provider Manages | Customer Manages | Examples |\n"
+            "|---|---|---|---|---|\n"
+            "| **IaaS** | Infrastructure as a Service | Virtualization, Servers, Storage, Networking | OS, Middleware, Runtime, Data, Applications | AWS EC2, Google Compute Engine, Azure VMs |\n"
+            "| **PaaS** | Platform as a Service | Hardware, Networking, OS, Runtime, Middleware | Applications and Data | AWS Elastic Beanstalk, Heroku, Google App Engine |\n"
+            "| **SaaS** | Software as a Service | Entire stack (Hardware up to Application) | Only configuration and user data | Google Workspace, Microsoft 365, Salesforce |\n\n"
+            "---\n\n"
+            "### 3. Virtualization: Type-1 vs. Type-2 Hypervisors\n"
+            "- **Type-1 (Bare-Metal Hypervisor)**: Runs directly on host hardware without an underlying host OS. High performance, low overhead, enterprise grade. Examples: VMware ESXi, Microsoft Hyper-V, KVM, Xen.\n"
+            "- **Type-2 (Hosted Hypervisor)**: Runs as an application on top of an existing host Operating System. Higher overhead. Examples: Oracle VirtualBox, VMware Workstation.\n"
+            "- **Containers vs. Virtual Machines**: VMs virtualize hardware and run a complete Guest OS (gigabytes, minutes to boot); Containers (Docker) virtualize the OS kernel and share the host kernel (megabytes, milliseconds to boot).\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **Deployment Models**: **Public Cloud** (open to general public, multi-tenant), **Private Cloud** (dedicated to single organization), **Hybrid Cloud** (bridges private and public clouds with data portability), **Community Cloud** (shared by organizations with shared compliance concerns).\n"
+            "- **Cloud SLA (Service Level Agreement)**: Defines uptime percentage guarantees (e.g. \"Four Nines\" = 99.99% uptime = at most 52.6 minutes of downtime per year)."
+        )
+
+    # 54. Internet of Things (IOT)
+    if any(re.search(pat, q) for pat in [r'\biot\b', r'\binternet of things\b']) or any(k in q for k in [
+        'what is iot', 'tell me about iot', 'explain iot', 'iot notes', 'iot architecture',
+        'sensors and actuators', 'mqtt protocol', 'coap protocol', 'arduino vs raspberry pi'
+    ]):
+        return (
+            "## Internet of Things (IOT): Architecture, Hardware & Protocols\n\n"
+            "The **Internet of Things (IoT)** is a global network of physically interconnected devices embedded with sensors, "
+            "actuators, software, and network connectivity that autonomously collect, exchange, and act upon environmental data.\n\n"
+            "---\n\n"
+            "### 1. 4-Layer IoT Architecture\n"
+            "1. **Perception / Sensing Layer**: Physical hardware that senses environmental data (temperature, pressure, motion) and executes physical actions via actuators.\n"
+            "2. **Network / Transmission Layer**: Securely transmits sensor data across gateways to cloud servers via wireless/wired protocols (Wi-Fi, Cellular 5G, Zigbee, LoRaWAN, BLE).\n"
+            "3. **Middleware / Processing Layer**: Ingests high-velocity telemetry streams, performs real-time analytics, filtering, database persistence, and device management.\n"
+            "4. **Application Layer**: User-facing interfaces delivering domain-specific services (Smart Cities, Healthcare, Industrial Automation, Precision Agriculture).\n\n"
+            "---\n\n"
+            "### 2. IoT Communication Protocols Comparison\n\n"
+            "| Protocol | Transport | Architecture | Overhead | Best Suited For |\n"
+            "|---|---|---|---|---|\n"
+            "| **MQTT** | TCP (Port 1883/8883) | **Publish/Subscribe (Broker-based)** | **2-byte header (Extremely low)** | High-latency, low-bandwidth, reliable telemetry |\n"
+            "| **CoAP** | UDP (Port 5683) | **Request/Response (Client/Server)** | 4-byte header | Constrained nodes requiring REST-like endpoints |\n"
+            "| **HTTP REST** | TCP (Port 80/443) | Request/Response | High (Headers > 500 bytes) | Powerful edge gateways to cloud servers |\n"
+            "| **Zigbee** | IEEE 802.15.4 | Mesh Network | Minimal | Low-power home automation (short range < 100m) |\n"
+            "| **LoRaWAN** | Radio RF | Star-of-Stars | Minimal | Long-range (> 10 km) agricultural / municipal sensors |\n\n"
+            "---\n\n"
+            "### 3. Hardware Comparison: Arduino vs. Raspberry Pi\n"
+            "- **Arduino (Microcontroller)**: Runs single program in loop directly on hardware (ATmega328P). Zero OS overhead, ultra-low power consumption, deterministic real-time analog/digital I/O.\n"
+            "- **Raspberry Pi (Single-Board Computer)**: Full microcomputer with multi-core ARM CPU, RAM, HDMI, and runs complete Linux OS. Handles multitasking, complex AI computer vision, and video processing at higher power consumption.\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **MQTT Quality of Service (QoS)**: `QoS 0` = At most once (fire & forget, no ack); `QoS 1` = At least once (acknowledged delivery, duplicate possible); `QoS 2` = Exactly once (four-step handshake, zero duplicates).\n"
+            "- **Edge Computing in IoT**: Processes latency-critical telemetry directly at the local gateway rather than transmitting all raw sensor streams to centralized cloud datacenters."
+        )
+
+    # 55. Big Data Analytics (BDA)
+    if any(re.search(pat, q) for pat in [r'\bbda\b', r'\bbig data\b', r'\bbig data analytics\b']) or any(k in q for k in [
+        'what is bda', 'tell me about bda', 'explain bda', 'bda notes', '5 vs of big data',
+        'hadoop architecture', 'hdfs', 'mapreduce', 'apache spark', 'rdd vs dataframe'
+    ]):
+        return (
+            "## Big Data Analytics (BDA): The 5 V's, Hadoop HDFS & Apache Spark\n\n"
+            "**Big Data Analytics** is the strategy of examining massive, high-velocity, and diverse data collections using "
+            "distributed computational clusters to uncover hidden patterns, correlations, and actionable business intelligence.\n\n"
+            "---\n\n"
+            "### 1. The 5 V's of Big Data\n"
+            "1. **Volume**: Sheer scale of data generated (terabytes to zettabytes from logs, transactions, video, sensors).\n"
+            "2. **Velocity**: Speed at which new data is generated, ingested, and processed (real-time stream vs batch).\n"
+            "3. **Variety**: Diversity of formats: **Structured** (RDBMS SQL), **Semi-Structured** (JSON, XML), and **Unstructured** (Audio, Video, PDF).\n"
+            "4. **Veracity**: Trustworthiness, noise ratio, quality, and accuracy of data sources.\n"
+            "5. **Value**: The ultimate actionable business utility extracted from analytics.\n\n"
+            "---\n\n"
+            "### 2. Hadoop Ecosystem: HDFS & MapReduce\n"
+            "- **HDFS (Hadoop Distributed File System)**: Master-Worker architecture. **NameNode (Master)** manages directory tree, metadata, and block locations in RAM. **DataNodes (Workers)** store actual data blocks on local disks. Default block size: **128 MB**. Default replication factor: **3** (2 copies in same rack, 1 in different rack for fault tolerance).\n"
+            "- **MapReduce Execution Phases**: `Input Split -> RecordReader -> Map Function (emits (key, value) pairs) -> Shuffle & Sort (groups values by key across cluster network) -> Reduce Function (aggregates values per key) -> Output`.\n\n"
+            "---\n\n"
+            "### 3. Hadoop MapReduce vs. Apache Spark Head-to-Head\n\n"
+            "| Feature | Apache Hadoop (MapReduce) | Apache Spark |\n"
+            "|---|---|---|\n"
+            "| **Processing Model** | Disk-based batch processing | **In-Memory processing (up to 100x faster)** |\n"
+            "| **Core Abstraction** | Key-Value pairs read/written to HDFS per step | **RDD (Resilient Distributed Dataset)** & DataFrames |\n"
+            "| **Iterative ML Jobs** | Extremely slow (each pass writes to disk) | **Ultra-fast** (caches RDDs in cluster RAM) |\n"
+            "| **Real-Time Streaming** | No native support | Native Spark Streaming via micro-batches |\n"
+            "| **API Languages** | Primarily Java | Python (PySpark), Scala, Java, SQL, R |\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **CAP Theorem**: Distributed data stores can simultaneously guarantee at most 2 out of 3 properties: **Consistency (C)**, **Availability (A)**, and **Partition Tolerance (P)**.\n"
+            "- **Spark RDD Transformations vs Actions**: **Transformations** (e.g. `map()`, `filter()`, `groupByKey()`) are **lazy** and build a DAG (Directed Acyclic Graph); **Actions** (e.g. `count()`, `collect()`, `saveAsTextFile()`) trigger immediate computation."
+        )
+
+    # 56. Software Testing Methodologies (STM / ST)
+    if any(re.search(pat, q) for pat in [r'\bstm\b', r'\bsoftware testing\b']) or any(k in q for k in [
+        'what is stm', 'tell me about stm', 'explain stm', 'stm notes', 'verification vs validation',
+        'black box vs white box', 'boundary value analysis', 'equivalence partitioning', 'cyclomatic complexity'
+    ]):
+        return (
+            "## Software Testing Methodologies (STM): Verification, Validation & Coverage\n\n"
+            "**Software Testing** is the systematic execution of software under controlled conditions to discover defects, "
+            "verify functional compliance, and validate that the final product meets specified customer requirements.\n\n"
+            "---\n\n"
+            "### 1. Verification vs. Validation (V&V)\n"
+            "- **Verification (\"Are we building the product right?\")**: Static process of evaluating work products (specifications, designs, code reviews, static code analysis) without executing the code.\n"
+            "- **Validation (\"Are we building the right product?\")**: Dynamic process of executing the actual compiled software to evaluate conformance against business requirements and customer expectations.\n\n"
+            "---\n\n"
+            "### 2. Black-Box vs. White-Box Testing Techniques\n\n"
+            "| Feature | Black-Box Testing | White-Box Testing |\n"
+            "|---|---|---|\n"
+            "| **Internal Logic Knowledge** | **Zero knowledge** of internal code implementation | **Complete visibility** of source code structure and logic |\n"
+            "| **Primary Focus** | Input-output behavior and functional specifications | Execution paths, branch logic, and statement coverage |\n"
+            "| **Conducted By** | Independent QA Testers and End-Users | Software Developers and Automation Engineers |\n"
+            "| **Key Techniques** | **Equivalence Class Partitioning (ECP)**, **Boundary Value Analysis (BVA)**, Decision Tables | **Statement Coverage**, **Branch/Decision Coverage**, **Path Coverage** |\n\n"
+            "---\n\n"
+            "### 3. Boundary Value Analysis (BVA) & Cyclomatic Complexity\n"
+            "- **Boundary Value Analysis (BVA)**: Defects cluster predominantly at input boundary limits. For a valid range $[a, b]$, test cases are: $a-1, a, a+1, b-1, b, b+1$.\n"
+            "- **McCabe Cyclomatic Complexity**: Quantifies the logical complexity of source code by measuring the number of linearly independent paths through the control flow graph $G$:\n"
+            "  $$V(G) = E - N + 2P$$\n"
+            "  Where $E$ = Number of Edges, $N$ = Number of Nodes, $P$ = Connected Components (typically $P=1$). Alternatively: $V(G) = \\text{Predicate Nodes} + 1$.\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **Testing Levels Hierarchy**: `Unit Testing (individual module) -> Integration Testing (inter-module interfaces) -> System Testing (entire integrated application) -> Acceptance Testing (client UAT)`.\n"
+            "- **Regression Testing**: Re-executing existing test suites after bug fixes or code modifications to verify that changes have not broken previously functioning code."
+        )
+
+    # 57. Digital Logic Design (DLD / DE)
+    if any(re.search(pat, q) for pat in [r'\bdld\b', r'\bdigital logic\b', r'\bdigital electronics\b']) or any(k in q for k in [
+        'what is dld', 'tell me about dld', 'explain dld', 'dld notes', 'boolean algebra',
+        'k map', 'karnaugh map', 'sop vs pos', 'multiplexer vs decoder', 'flip flop', 'jk flip flop', 'sr flip flop'
+    ]):
+        return (
+            "## Digital Logic Design (DLD): Boolean Algebra, K-Maps & Sequential Logic\n\n"
+            "**Digital Logic Design** provides the electronic and Boolean algebraic foundation for computing hardware, "
+            "mapping abstract binary logic states (0 and 1) to physical voltage gates and memory elements.\n\n"
+            "---\n\n"
+            "### 1. Fundamental Boolean Theorems & Universal Gates\n"
+            "- **De Morgan's Laws**: $\\overline{A \\cdot B} = \\overline{A} + \\overline{B}$ and $\\overline{A + B} = \\overline{A} \\cdot \\overline{B}$.\n"
+            "- **Universal Logic Gates**: **NAND** and **NOR** are universal gates because any arbitrary Boolean function (AND, OR, NOT, XOR) can be constructed solely using either NAND or NOR gates alone.\n"
+            "- **Canonical Forms**: **SOP (Sum of Products)** groups minterms ($\\sum m$) where output is 1; **POS (Product of Sums)** groups maxterms ($\\prod M$) where output is 0.\n\n"
+            "---\n\n"
+            "### 2. Karnaugh Map (K-Map) Minimization Rules\n"
+            "- Cells are ordered using **Gray Code** ($00, 01, 11, 10$) so adjacent cells differ by exactly **one bit**.\n"
+            "- Form rectangles/squares of sizes that are powers of two ($1, 2, 4, 8, 16$). Larger groups eliminate more variables.\n"
+            "- Groups can wrap around edges and corners. **Don't Care ($d$ or $X$)** conditions can be treated as 1 or 0 to enlarge groups.\n\n"
+            "---\n\n"
+            "### 3. Combinational vs. Sequential Circuits\n\n"
+            "| Parameter | Combinational Logic | Sequential Logic |\n"
+            "|---|---|---|\n"
+            "| **Memory Element** | **No memory** (output depends strictly on current inputs) | **Contains memory** (output depends on current inputs + past history) |\n"
+            "| **Feedback Path** | Absent | Present (output feeds back into inputs) |\n"
+            "| **Clock Signal** | Not required (asynchronous response) | Governed by Clock pulses (synchronous) |\n"
+            "| **Representative Circuits** | Multiplexer (MUX), Decoder, Encoder, Adders (Half/Full) | Latches, Flip-Flops (SR, JK, D, T), Counters, Shift Registers |\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **Race-Around Condition in JK Flip-Flop**: When $J=1, K=1$ and clock pulse duration $t_p > \\Delta t$ (propagation delay), output toggles continuously during single clock pulse. Solved by: **Master-Slave JK Flip-Flop** or **Edge-Triggering**.\n"
+            "- **Multiplexer Equation**: An $n$-to-1 MUX requires $\\log_2 n$ selection lines to route 1 input line to output."
+        )
+
+    # 58. Microprocessors & Interfacing (MP / MPI)
+    if any(re.search(pat, q) for pat in [r'\bmpi\b', r'\bmicroprocessor\b']) or any(k in q for k in [
+        'what is mpi', 'tell me about mpi', 'explain mpi', 'mpi notes', '8086 architecture',
+        '8086 pin diagram', 'bus interface unit', 'execution unit', 'memory segmentation', '8086 vs 8051'
+    ]):
+        return (
+            "## Microprocessors & Interfacing (MPI): Intel 8086 Architecture & Segmentation\n\n"
+            "**Microprocessors and Interfacing** explores the CPU hardware organization, internal register architecture, "
+            "instruction execution pipelines, and peripheral bus interfacing of microcomputing systems.\n\n"
+            "---\n\n"
+            "### 1. Intel 8086 Microprocessor Specifications\n"
+            "- **Data Bus**: **16-bit** internal and external data bus (ALU handles 16-bit arithmetic in single cycle).\n"
+            "- **Address Bus**: **20-bit** address bus, capable of directly addressing $2^{20} = 1,048,576\\text{ bytes} = 1\\text{ MB}$ of memory.\n"
+            "- **Clock Speed**: Operates at 5 MHz (8086), 8 MHz (8086-2), or 10 MHz (8086-1).\n"
+            "- **Dual Processing Units (Pipelined Overlap)**:\n"
+            "  1. **BIU (Bus Interface Unit)**: Handles external bus transfers; fetches instruction bytes and stores them in a **6-byte Instruction Queue (FIFO)**.\n"
+            "  2. **EU (Execution Unit)**: Decodes and executes instructions fetched from the BIU queue, housing the 16-bit ALU and register set.\n\n"
+            "---\n\n"
+            "### 2. Memory Segmentation in 8086\n"
+            "- 1 MB physical address space is partitioned into logical segments of at most **64 KB** each.\n"
+            "- **Segment Registers (16-bit)**: `CS` (Code Segment), `DS` (Data Segment), `SS` (Stack Segment), `ES` (Extra Segment).\n"
+            "- **Offset Registers (16-bit)**: `IP` (Instruction Pointer), `SP` (Stack Pointer), `BP` (Base Pointer), `SI` (Source Index), `DI` (Destination Index).\n"
+            "- **Physical Address Calculation Formula**:\n"
+            "  $$\\text{Physical Address} = (\\text{Segment Register} \\times 16_{10}) + \\text{Offset Register} = (\\text{Segment} \\ll 4) + \\text{Offset}$$\n"
+            "  *Example*: If `CS = 2000H` and `IP = 1000H`, $\\text{Physical Address} = 20000H + 1000H = 21000H$.\n\n"
+            "---\n\n"
+            "### 3. Microprocessor (8086) vs. Microcontroller (8051)\n\n"
+            "| Feature | Intel 8086 Microprocessor | Intel 8051 Microcontroller |\n"
+            "|---|---|---|\n"
+            "| **On-Chip Hardware** | CPU only (RAM, ROM, I/O ports, timers connected externally) | Complete system on a chip: CPU + 128B RAM + 4KB ROM + 2 Timers + 4 I/O Ports |\n"
+            "| **Primary Application** | General-purpose computing systems (PCs) | Dedicated embedded control systems (Washing machines, microwave, automotive) |\n"
+            "| **Cost & Board Footprint**| High (requires multiple peripheral ICs: 8255, 8259, 8254) | Low and compact (single chip contains entire controller) |\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **8086 Flag Register**: 9 active flags: 6 status flags (`CF`, `PF`, `AF`, `ZF`, `SF`, `OF`) and 3 control flags (`TF` trap, `IF` interrupt, `DF` direction).\n"
+            "- **Hardware Interrupts**: 2 external pins: `NMI` (Non-Maskable Interrupt, Type-2, highest priority) and `INTR` (Maskable Interrupt via 8259 PIC)."
+        )
+
+    # 59. CPU Scheduling Algorithms (OS)
+    if any(re.search(pat, q) for pat in [r'\bfcfs\b', r'\bsjf\b', r'\bsrtf\b', r'\bround robin\b']) or any(k in q for k in [
+        'cpu scheduling algorithms', 'fcfs scheduling', 'sjf scheduling', 'srtf scheduling',
+        'round robin scheduling', 'priority scheduling', 'convoy effect'
+    ]):
+        return (
+            "## CPU Scheduling Algorithms: Comparative Analysis & Calculations\n\n"
+            "**CPU Scheduling** is the core Operating System process by which the **Short-Term Scheduler** selects an executable process "
+            "from the Ready Queue and allocates CPU execution cycles to it, maximizing CPU utilization and throughput.\n\n"
+            "---\n\n"
+            "### 1. Head-to-Head Comparison Table\n\n"
+            "| Algorithm | Mode | Selection Metric | Starvation Risk? | Primary Drawback / Note |\n"
+            "|---|---|---|---|---|\n"
+            "| **FCFS** | Non-Preemptive | Arrival Time (FIFO) | **No** | **Convoy Effect** (Short processes wait behind long CPU-bound process) |\n"
+            "| **SJF** | Non-Preemptive | Shortest Burst Time | **Yes** (Long processes starve) | **Optimal minimum average waiting time**; requires predicting future burst time |\n"
+            "| **SRTF** | **Preemptive SJF** | Shortest Remaining Burst Time | **Yes** | Frequently preempts running process when shorter job arrives |\n"
+            "| **Round Robin (RR)**| **Preemptive** | Fixed Time Quantum (q) | **No** | If q too large -> degenerates to FCFS; if q too small -> context-switch overhead dominates |\n"
+            "| **Priority** | Both | Priority value | **Yes** | High priority preempts low priority; solved by **Aging** |\n\n"
+            "---\n\n"
+            "### 2. Standard Evaluation Metrics & Formulas\n"
+            "- **Turnaround Time (TAT)**: Total time elapsed from submission to termination:\n"
+            "  $$\\text{TAT} = \\text{Completion Time} - \\text{Arrival Time}$$\n"
+            "- **Waiting Time (WT)**: Total duration spent waiting inside Ready Queue:\n"
+            "  $$\\text{WT} = \\text{Turnaround Time} - \\text{Burst Time}$$\n"
+            "- **Response Time (RT)**: Time elapsed from arrival to the very first CPU allocation.\n\n"
+            "---\n\n"
+            "### 3. High-Yield Exam Memory Points\n"
+            "- **SJF Optimality Proof**: Proved via exchange argument that SJF yields the absolute minimum average waiting time among all non-preemptive algorithms.\n"
+            "- **Round Robin Time Quantum Rule of Thumb**: 80% of CPU bursts should be shorter than the time quantum $q$ to minimize context switches while ensuring rapid response time."
+        )
+
+    # 60. Banker's Algorithm & Concurrency (OS)
+    if any(k in q for k in ['bankers algorithm', 'banker\'s algorithm', 'deadlock avoidance', 'safety algorithm', 'critical section problem', 'peterson solution']):
+        return (
+            "## Operating Systems: Banker's Algorithm & Concurrency Synchronization\n\n"
+            "**Dijkstra's Banker's Algorithm** is a deadlock avoidance algorithm that dynamically tests for resource allocation safety "
+            "by simulating the allocation of predetermined maximum possible amounts of all resources, ensuring the system never enters an unsafe state.\n\n"
+            "---\n\n"
+            "### 1. Core Data Structures\n"
+            "Let $n$ be the number of processes and $m$ be the number of resource types:\n"
+            "- **Available[m]**: Vector of available instances per resource type.\n"
+            "- **Max[n][m]**: Maximum resource demand of each process.\n"
+            "- **Allocation[n][m]**: Current instances allocated to each process.\n"
+            "- **Need[n][m]**: Remaining resource demand:\n"
+            "  $$\\text{Need}[i][j] = \\text{Max}[i][j] - \\text{Allocation}[i][j]$$\n\n"
+            "---\n\n"
+            "### 2. Safety Algorithm Execution Steps\n"
+            "1. Initialize `Work = Available` and `Finish[i] = False` for all processes $i = 0, 1, \\dots, n-1$.\n"
+            "2. Find an index $i$ such that: `Finish[i] == False` and `Need[i] <= Work`.\n"
+            "   If no such $i$ exists, go to Step 4.\n"
+            "3. Process $i$ completes and releases its resources: `Work = Work + Allocation[i]`, `Finish[i] = True`. Return to Step 2.\n"
+            "4. If `Finish[i] == True` for all $i$, the system is in a **Safe State** (a Safe Sequence exists). Otherwise, the system is in an **Unsafe State**.\n\n"
+            "---\n\n"
+            "### 3. Critical Section Problem Synchronization Criteria\n"
+            "1. **Mutual Exclusion**: If process $P_i$ is executing in its critical section, no other processes can execute in their critical sections.\n"
+            "2. **Progress**: If no process is executing in its critical section and some processes wish to enter, only processes not in their remainder section can participate in deciding who enters next.\n"
+            "3. **Bounded Waiting**: There must be a bound on the number of times other processes are allowed to enter their critical sections after a process has made a request to enter and before that request is granted."
+        )
+
+    # 61. Page Replacement & Virtual Memory (OS)
+    if any(k in q for k in ['page replacement', 'fifo page replacement', 'lru page replacement', 'optimal page replacement', 'belady anomaly', 'paging vs segmentation']):
+        return (
+            "## Virtual Memory: Page Replacement Algorithms & Belady's Anomaly\n\n"
+            "**Page Replacement Algorithms** dictate which memory page frame is evicted to disk swap space when a **Page Fault** occurs "
+            "and all physical RAM frames are currently occupied.\n\n"
+            "---\n\n"
+            "### 1. Comparative Reference Table\n\n"
+            "| Algorithm | Eviction Policy | Belady's Anomaly? | Hardware Overhead | Practical Implementation |\n"
+            "|---|---|---|---|---|\n"
+            "| **FIFO** | Evicts oldest loaded page | **Yes (Suffers from Anomaly)** | Lowest (circular queue) | Simple queue; poor hit ratio |\n"
+            "| **Optimal (OPT / MIN)** | Evicts page not used for longest future duration | **No (Stack algorithm)** | Impossible in real-time | Benchmark standard only (requires clairvoyant future knowledge) |\n"
+            "| **LRU** | Evicts page not used for longest past duration | **No (Stack algorithm)** | High (timestamps or Doubly Linked List) | Approximated via Clock / Second-Chance algorithm |\n\n"
+            "---\n\n"
+            "### 2. Belady's Anomaly Explained\n"
+            "- **Definition**: For certain page replacement algorithms (primarily FIFO), increasing the number of physical page frames allocated to a process can **paradoxically increase the total number of page faults**.\n"
+            "- **Why LRU and OPT are Immune**: LRU and OPT belong to the class of **Stack Algorithms**. For any stack algorithm, the set of pages in memory for $n$ frames is always a strict subset of the pages in memory for $n+1$ frames ($M(n) \\subseteq M(n+1)$).\n\n"
+            "---\n\n"
+            "### 3. Paging vs. Segmentation\n\n"
+            "| Feature | Paging | Segmentation |\n"
+            "|---|---|---|\n"
+            "| **Partition Size** | Fixed physical blocks (e.g. 4 KB) | Variable logical blocks (code, stack, heap, function) |\n"
+            "| **Programmer Visibility**| Completely invisible to programmer (handled by OS/MMU) | Visible to programmer (logical modules) |\n"
+            "| **Fragmentation Type** | **Internal Fragmentation** (only in last page frame) | **External Fragmentation** (free memory split into non-contiguous gaps) |\n"
+            "| **Address Mapping** | Page Number + Page Offset | Segment Number + Segment Offset |"
+        )
+
+    # 62. DBMS Transactions & Concurrency Control (2PL)
+    if any(k in q for k in ['transaction', 'transactions', 'serializability', 'conflict serializability', 'two phase locking', '2pl', 'concurrency control', 'indexing', 'b+ tree', 'b tree indexing']):
+        return (
+            "## DBMS Transactions: ACID, Conflict Serializability & Two-Phase Locking (2PL)\n\n"
+            "**Transaction Management & Concurrency Control** guarantees database consistency and isolation when multiple "
+            "interleaved read and write transactions execute concurrently across shared disk storage.\n\n"
+            "---\n\n"
+            "### 1. Conflict Operations & Serializability\n"
+            "Two operations in a concurrent schedule conflict if they satisfy ALL 3 conditions:\n"
+            "1. They belong to **different transactions**.\n"
+            "2. They access the **same data item** $Q$.\n"
+            "3. At least one of the operations is a **Write($Q$)**.\n\n"
+            "**Conflict Equivalence & Testing**:\n"
+            "- Construct a directed **Precedence Graph (Serialization Graph)**: Node per transaction $T_i$. Draw directed edge $T_i \\to T_j$ if an operation in $T_i$ conflicts with and executes before an operation in $T_j$.\n"
+            "- **Serializability Theorem**: A schedule is **Conflict Serializable if and only if its Precedence Graph contains NO directed cycles**.\n\n"
+            "---\n\n"
+            "### 2. Two-Phase Locking (2PL) Protocol\n"
+            "- **Phase 1 (Growing Phase)**: A transaction may acquire locks (Shared `S` or Exclusive `X`), but cannot release any lock.\n"
+            "- **Phase 2 (Shrinking Phase)**: A transaction may release locks, but cannot acquire any new locks.\n"
+            "- **Lock Point**: The instant when the transaction acquires its final lock (boundary between Growing and Shrinking phases).\n"
+            "- **Guarantee**: Basic 2PL guarantees **Conflict Serializability**, but does not prevent **Deadlocks** or **Cascading Rollbacks**.\n"
+            "- **Strict 2PL**: Holds all **Exclusive (X) locks** until transaction commit/abort (prevents cascading aborts).\n"
+            "- **Rigorous 2PL**: Holds **ALL locks (both S and X)** until transaction commit/abort."
+        )
+
+    # 63. CN IP Addressing & Subnetting (CIDR, IPv4, IPv6)
+    if any(k in q for k in ['ip addressing', 'subnetting', 'cidr notation', 'ipv4 vs ipv6', 'subnet mask calculation']):
+        return (
+            "## Computer Networks: IP Addressing, CIDR Subnetting & IPv4 vs. IPv6\n\n"
+            "**IP Addressing** provides logical Layer-3 addressing enabling global host-to-host routing across diverse network boundaries.\n\n"
+            "---\n\n"
+            "### 1. Classful IPv4 Addressing Architecture\n\n"
+            "| Class | Leading Bits | First Octet Range | Default Subnet Mask | Network Bits / Host Bits | Total Networks / Hosts per Net |\n"
+            "|---|---|---|---|---|---|\n"
+            "| **Class A** | `0` | 1 – 126 | 255.0.0.0 (/8) | 8 Net / 24 Host | 128 nets / 16,777,214 hosts |\n"
+            "| **Class B** | `10` | 128 – 191 | 255.255.0.0 (/16) | 16 Net / 16 Host | 16,384 nets / 65,534 hosts |\n"
+            "| **Class C** | `110` | 192 – 223 | 255.255.255.0 (/24) | 24 Net / 8 Host | 2,097,152 nets / 254 hosts |\n"
+            "| **Class D** | `1110` | 224 – 239 | N/A | Multicast Addressing | Group broadcasting |\n"
+            "| **Class E** | `1111` | 240 – 255 | N/A | Experimental / Research | Reserved |\n\n"
+            "---\n\n"
+            "### 2. CIDR & Subnetting Formulas\n"
+            "- **Subnet Mask Prefix (/n)**: $n$ consecutive binary 1s followed by $(32 - n)$ binary 0s.\n"
+            "- **Total Addresses in Block**: $2^{32 - n}$.\n"
+            "- **Usable Host Addresses per Subnet**:\n"
+            "  $$\\text{Usable Hosts} = 2^{32 - n} - 2$$\n"
+            "  *Note*: Subtract 2 because the very first address is the **Network ID** and the last address is the **Directed Broadcast Address**.\n\n"
+            "---\n\n"
+            "### 3. IPv4 vs. IPv6 Comparison\n\n"
+            "| Feature | IPv4 | IPv6 |\n"
+            "|---|---|---|\n"
+            "| **Address Length** | **32 bits (4 bytes)** | **128 bits (16 bytes)** |\n"
+            "| **Address Space** | $2^{32} \\approx 4.3 \\times 10^9$ addresses | $2^{128} \\approx 3.4 \\times 10^{38}$ addresses |\n"
+            "| **Notation Format** | Dotted decimal (`192.168.1.1`) | Hexadecimal with colons (`2001:0db8::8a2e:0370:7334`) |\n"
+            "| **Header Size** | Variable (20 to 60 bytes with options) | Fixed 40 bytes (faster hardware routing) |\n"
+            "| **Security (IPSec)** | Optional add-on | Natively built into protocol specification |"
+        )
+
+    # 64. COA Cache Memory & Pipelining
+    if any(k in q for k in ['cache memory', 'cache mapping', 'pipelining', 'pipeline hazards', 'risc vs cisc', 'cisc vs risc', 'instruction cycle']) or ('risc' in q and 'cisc' in q):
+        return (
+            "## Computer Organization: Cache Mapping, Pipelining & RISC vs. CISC\n\n"
+            "**Computer Organization & Architecture (COA)** investigates the hardware execution pipeline, memory hierarchies, "
+            "and instruction set designs that optimize instructions per cycle (IPC).\n\n"
+            "---\n\n"
+            "### 1. Cache Mapping Comparison Table\n\n"
+            "| Mapping Scheme | Placement Rule | Address Split Fields | Conflict Misses | Hardware Cost |\n"
+            "|---|---|---|---|---|\n"
+            "| **Direct Mapping** | Block $j$ maps strictly to line `j mod Number_of_Lines` | `Tag + Line Number + Word Offset` | **Highest** (multiple blocks collide on same line) | Lowest (single comparator) |\n"
+            "| **Fully Associative**| Block can occupy any vacant cache line | `Tag + Word Offset` | **Zero** (optimal utilization) | Highest (parallel comparators per line) |\n"
+            "| **Set-Associative (k-Way)**| Block maps to set `j mod Number_of_Sets` with $k$ lines | `Tag + Set Index + Word Offset` | Moderate | Balanced standard (used in modern CPUs) |\n\n"
+            "---\n\n"
+            "### 2. Classical 5-Stage Pipeline Hazards\n"
+            "1. **Structural Hazard**: Hardware resource conflict (e.g. single-port memory accessed simultaneously by Fetch and Memory stages). Solution: Separate Instruction and Data caches (Harvard architecture).\n"
+            "2. **Data Hazard (RAW - Read After Write)**: Instruction J attempts to read register before Instruction I has written to it. Solution: **Operand Forwarding / Bypassing** directly from ALU output back to ALU input.\n"
+            "3. **Control Hazard (Branch Penalty)**: Branch instruction changes PC, rendering already-fetched sequential instructions invalid. Solution: **Branch Prediction** (Static or 2-bit Dynamic Saturating Counter) and Delayed Branching.\n\n"
+            "---\n\n"
+            "### 3. RISC vs. CISC Comparison Table\n\n"
+            "| Feature | RISC (Reduced Instruction Set) | CISC (Complex Instruction Set) |\n"
+            "|---|---|---|\n"
+            "| **Instruction Length** | **Fixed** (e.g. 32-bit uniform) | **Variable** (1 to 15 bytes in x86) |\n"
+            "| **Execution Cycle** | Single cycle per instruction | Multi-cycle complex instructions |\n"
+            "| **Memory Access** | **Load/Store architecture only** | Instructions can operate directly on memory |\n"
+            "| **Control Unit** | Hardwired (ultra-fast) | Microprogrammed in microcode ROM |\n"
+            "| **Examples** | ARM, MIPS, RISC-V | Intel x86, AMD64 |"
+        )
+
+    # 65. TOC Chomsky Hierarchy & Automata (PDA, TM)
+    if any(k in q for k in ['chomsky', 'chomsky hierarchy', 'pushdown automaton', 'pushdown automata', 'pda', 'turing machine', 'halting problem', 'decidability']):
+        return (
+            "## Theory of Computation: Chomsky Hierarchy, Automata & Decidability\n\n"
+            "**Theory of Computation** formalizes the mathematical capabilities and physical limits of computational machines "
+            "using the Chomsky Hierarchy of formal languages and Automata Theory.\n\n"
+            "---\n\n"
+            "### 1. The Chomsky Hierarchy Reference Table\n\n"
+            "| Hierarchy Level | Language Class | Generating Grammar | Recognizing Automaton | Example Language |\n"
+            "|---|---|---|---|---|\n"
+            "| **Type-3** | **Regular Languages** | $A \\to aB$ or $A \\to a$ | **Finite Automata (DFA / NFA)** | $a^* b^*$, strings ending in 01 |\n"
+            "| **Type-2** | **Context-Free (CFL)** | $A \\to \\alpha$ (Single non-terminal) | **Pushdown Automata (PDA)** | $a^n b^n (n \\ge 0)$, Palindromes |\n"
+            "| **Type-1** | **Context-Sensitive (CSL)** | $\\alpha A \\beta \\to \\alpha \\gamma \\beta$ ($|\\alpha A \\beta| \\le |\\alpha \\gamma \\beta|$) | **Linear Bounded Automata (LBA)** | $a^n b^n c^n (n \\ge 1)$ |\n"
+            "| **Type-0** | **Recursively Enumerable (RE)** | Unrestricted phrase structure | **Turing Machine (TM)** | Halting Problem, General Code |\n\n"
+            "---\n\n"
+            "### 2. Decidability & Closure Properties\n"
+            "- **Regular Languages**: Decidable for **ALL** standard questions (Membership, Emptiness, Finiteness, Equivalence). Closed under Union, Intersection, Complement, Kleene Star, Concatenation.\n"
+            "- **Context-Free Languages**: Decidable for Membership and Emptiness. **Undecidable for Equivalence ($L_1 = L_2$)**. **NOT closed under Intersection or Complement**.\n"
+            "- **Turing Halting Problem**: Proved undecidable by Alan Turing (1936) via diagonal proof: No general algorithm can exist that decides whether an arbitrary program will halt on a given input."
+        )
+
+    # 66. Software Engineering: Agile, Waterfall & SDLC Models
+    if any(k in q for k in ['agile', 'scrum', 'agile methodology', 'waterfall vs agile', 'scrum framework', 'sdlc models comparison', 'spiral model']):
+        return (
+            "## Software Engineering: SDLC Process Models & Agile Scrum Framework\n\n"
+            "**Software Development Life Cycle (SDLC)** models structure the engineering workflows from initial requirements "
+            "engineering through design, coding, testing, integration, and operational maintenance.\n\n"
+            "---\n\n"
+            "### 1. SDLC Process Models Comparative Analysis\n\n"
+            "| Model | Structure | Risk Handling | Customer Feedback | Best Suited For |\n"
+            "|---|---|---|---|---|\n"
+            "| **Waterfall** | Linear sequential | Poor (Discovered during late testing) | Only at start and final handover | Fixed, well-understood requirements |\n"
+            "| **Agile (Scrum)** | Iterative sprints (2–4 weeks) | Excellent (Continuous adaptation) | High (Continuous stakeholder reviews) | Dynamic, evolving commercial products |\n"
+            "| **Spiral** | Radial cycles with 4 quadrants | **Best (Explicit risk analysis each cycle)** | High (At end of each loop) | High-risk, complex mission-critical systems |\n"
+            "| **V-Model** | Sequential with matched testing pairs | Moderate (Verification & Validation) | Low | High-reliability systems (medical, avionics) |\n\n"
+            "---\n\n"
+            "### 2. Agile Scrum Framework & Ceremonies\n"
+            "- **Roles**:\n"
+            "  1. **Product Owner**: Defines features, prioritizes Product Backlog, represents client business value.\n"
+            "  2. **Scrum Master**: Facilitates process, eliminates blockers, coaches team on agile principles.\n"
+            "  3. **Development Team**: Cross-functional autonomous engineers who execute sprint deliverables.\n"
+            "- **Ceremonies**:\n"
+            "  1. **Sprint Planning**: Select backlog items for upcoming sprint.\n"
+            "  2. **Daily Standup (Scrum)**: 15-minute daily sync: What did I do yesterday? What will I do today? Any blockers?\n"
+            "  3. **Sprint Review**: Live demonstration of working increment to stakeholders.\n"
+            "  4. **Sprint Retrospective**: Internal team review on process improvements and team dynamics."
         )
 
     if only_curated:
@@ -3767,7 +4489,7 @@ def get_ai_response(messages, last_user_message, is_voice=False):
                     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
                 }
             )
-            with urllib.request.urlopen(req, timeout=3.8) as res:
+            with urllib.request.urlopen(req, timeout=2.0) as res:
                 chunks = []
                 for chunk in res:
                     if chunk:
@@ -3806,7 +4528,7 @@ def get_ai_response(messages, last_user_message, is_voice=False):
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
                 }
             )
-            with urllib.request.urlopen(req, timeout=3.8) as res:
+            with urllib.request.urlopen(req, timeout=2.0) as res:
                 raw_text = res.read().decode('utf-8', errors='replace').strip()
                 ans = raw_text
                 try:
@@ -3833,7 +4555,7 @@ def get_ai_response(messages, last_user_message, is_voice=False):
         executor.submit(call_pollinations): 'pollinations'
     }
     try:
-        for future in concurrent.futures.as_completed(futures, timeout=4.0):
+        for future in concurrent.futures.as_completed(futures, timeout=2.2):
             try:
                 res = future.result()
                 executor.shutdown(wait=False, cancel_futures=True)
