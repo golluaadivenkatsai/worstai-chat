@@ -61,6 +61,128 @@ class HighConcurrencyCache:
 GLOBAL_RESPONSE_CACHE = HighConcurrencyCache()
 
 # =============================================================================
+# SHORT-FORM NORMALIZER & QUERY PRE-PROCESSOR
+# Seamlessly expands chat shortcuts, abbreviations, and acronyms (b/w -> between,
+# diff -> difference, tc/sc, p1/lc1 -> leetcode 1) so queries hit instant
+# academic curricula and LeetCode engines in 0.0001s without network delays.
+# =============================================================================
+
+SHORT_FORMS = {
+    r'\bb/w\b': 'between',
+    r'\bdiff\b': 'difference',
+    r'\bdif\b': 'difference',
+    r'\bw/o\b': 'without',
+    r'\bw/\b': 'with',
+    r'\bplz\b': 'please',
+    r'\bpls\b': 'please',
+    r'\bu\b': 'you',
+    r'\bur\b': 'your',
+    r'\br\b': 'are',
+    r'\balgo\b': 'algorithm',
+    r'\balgos\b': 'algorithms',
+    r'\bsoln\b': 'solution',
+    r'\bsol\b': 'solution',
+    r'\bprob\b': 'problem',
+    r'\bprobs\b': 'problems',
+    r'\btc\b': 'time complexity',
+    r'\bt/c\b': 'time complexity',
+    r'\bsc\b': 'space complexity',
+    r'\bs/c\b': 'space complexity',
+    r'\btc/sc\b': 'time complexity and space complexity',
+    r'\bdef\b': 'definition',
+    r'\bp(\d+)\b': r'leetcode \1',
+    r'\blc\s*#?(\d+)\b': r'leetcode \1',
+    r'\bq(\d+)\b': r'leetcode \1',
+
+    # ── CS SUBJECT ABBREVIATIONS ──────────────────────────────────────────
+    # Operating Systems
+    r'\bos\b': 'operating system',
+    # Data Structures & Algorithms
+    r'\bdsa\b': 'data structures and algorithms',
+    r'\bds\b': 'data structures',
+    # Database Management Systems
+    r'\bdbms\b': 'database management system',
+    r'\bdb\b': 'database',
+    r'\brdbms\b': 'relational database management system',
+    r'\bsql\b': 'structured query language sql',
+    r'\bnosql\b': 'nosql database',
+    # Computer Networks
+    r'\bcn\b': 'computer networks',
+    r'\bnet\b': 'networking',
+    # Computer Organization & Architecture
+    r'\bcoa\b': 'computer organization and architecture',
+    r'\bcao\b': 'computer organization and architecture',
+    r'\bco\b': 'computer organization',
+    # Theory of Computation
+    r'\btoc\b': 'theory of computation',
+    r'\btom\b': 'theory of machines',
+    r'\bfl\b': 'formal languages',
+    r'\bpda\b': 'pushdown automaton',
+    r'\bdfa\b': 'deterministic finite automaton',
+    r'\bnfa\b': 'nondeterministic finite automaton',
+    r'\bcfg\b': 'context free grammar',
+    # Compiler Design
+    r'\bcd\b': 'compiler design',
+    # Software Engineering
+    r'\bse\b': 'software engineering',
+    r'\bsdlc\b': 'software development life cycle sdlc',
+    # Artificial Intelligence / ML
+    r'\bai\b': 'artificial intelligence',
+    r'\bml\b': 'machine learning',
+    r'\bdl\b': 'deep learning',
+    r'\bnlp\b': 'natural language processing',
+    r'\brl\b': 'reinforcement learning',
+    r'\bnn\b': 'neural network',
+    r'\blstm\b': 'long short term memory lstm',
+    # Object Oriented Programming
+    r'\boop\b': 'object oriented programming',
+    r'\boops\b': 'object oriented programming concepts',
+    # Discrete Mathematics
+    r'\bdm\b': 'discrete mathematics',
+    # Dynamic Programming
+    r'\bdp\b': 'dynamic programming',
+    # Data Structures specifics
+    r'\bll\b': 'linked list',
+    r'\bbst\b': 'binary search tree',
+    r'\bavl\b': 'avl tree self balancing',
+    r'\bbfs\b': 'breadth first search bfs',
+    r'\bdfs\b': 'depth first search dfs',
+    r'\bmst\b': 'minimum spanning tree',
+    r'\blru\b': 'lru least recently used cache replacement',
+    r'\bkmp\b': 'kmp knuth morris pratt string matching',
+    # GATE Exam
+    r'\bgate cse\b': 'gate computer science engineering syllabus',
+    # Common shortcuts
+    r'\beg\b': 'example',
+    r'\bie\b': 'that is',
+    r'\bcalc\b': 'calculate',
+    r'\bcomp\b': 'complexity',
+    r'\bfn\b': 'function',
+    r'\bfunc\b': 'function',
+    r'\bvar\b': 'variable',
+    r'\bptr\b': 'pointer',
+    r'\bcpu\b': 'central processing unit cpu',
+    r'\bgpu\b': 'graphics processing unit gpu',
+    r'\bram\b': 'random access memory ram',
+    r'\brom\b': 'read only memory rom',
+    r'\bvm\b': 'virtual machine',
+    r'\btcp\b': 'tcp transmission control protocol',
+    r'\budp\b': 'udp user datagram protocol',
+    r'\bdns\b': 'dns domain name system',
+}
+
+def normalize_query_and_short_forms(query: str) -> str:
+    if not query:
+        return query
+    q = query.strip()
+    for pat, repl in SHORT_FORMS.items():
+        q = re.sub(pat, repl, q, flags=re.IGNORECASE)
+    # Standalone 'n' between words -> 'and'
+    q = re.sub(r'(?<=\w)\s+n\s+(?=\w)', ' and ', q, flags=re.IGNORECASE)
+    q = re.sub(r'\s+', ' ', q).strip()
+    return q
+
+# =============================================================================
 # WEB RESEARCH AGENT
 # Uses DuckDuckGo (free, no key) to find real URLs, then Jina AI reader
 # (free, no key) to extract clean text from each page.
@@ -123,11 +245,11 @@ def fetch_leetcode_full_solution(query_str):
     """Query LeetCode GraphQL API and WalkCCC solution repo to retrieve full problem, description, working Python & C++ solutions, and complexity."""
     clean_q = query_str.lower().strip()
     
-    # 1. Try to extract problem number
-    num_match = re.search(r'\b(?:leetcode|lc|problem|question)\s*#?\s*(?:number\s*|no\.?\s*)?(\d+)\b', clean_q)
+    # 1. Try to extract problem number (supports lc 1, lc1, p1, p 1, q1, problem 1, etc.)
+    num_match = re.search(r'\b(?:leetcode|lc|problem|question|[pq])\s*#?\s*(?:number\s*|no\.?\s*)?(\d+)\b', clean_q)
     if not num_match:
-        num_match = re.search(r'\b(\d{1,4})\s*(?:problem|question|leetcode|lc)\b', clean_q)
-    if not num_match and ('leetcode' in clean_q or 'lc' in clean_q):
+        num_match = re.search(r'\b(\d{1,4})\s*(?:problem|question|leetcode|lc|[pq])\b', clean_q)
+    if not num_match and any(k in clean_q for k in ['leetcode', 'lc', 'two sum']):
         num_match = re.search(r'\b(\d{1,4})\b', clean_q)
 
     search_keyword = None
@@ -369,7 +491,7 @@ def determine_analytical_answer(q_text, options):
                     return opt_label, f"Formula: Maximum edges in a disconnected graph with n vertices is C(n-1, 2) = {max_edges}.", (
                         f"To maximize edges while keeping an undirected graph of n = {n} vertices disconnected into at least 2 components, "
                         f"we isolate 1 vertex and connect the remaining {n-1} vertices into a complete graph K_{n-1}. "
-                        f"Number of edges = C({n}-1, 2) = ({n-1} × {n-2} / 2) = {max_edges}."
+                        f"Number of edges = C({n}-1, 2) = ({n-1} Ã— {n-2} / 2) = {max_edges}."
                     )
 
     # 3. Deadlock Freedom: P * (R - 1) + 1 <= Total Resources
@@ -383,7 +505,7 @@ def determine_analytical_answer(q_text, options):
             for opt_label, opt_val in options.items():
                 if str(min_res) in opt_val:
                     return opt_label, f"Deadlock freedom condition: Total Resources >= P * (R - 1) + 1 = {min_res}.", (
-                        f"By the Pigeonhole Principle, if each of the {p} processes holds (R - 1) = {r-1} resource instances (total held = {p} × {r-1} = {p*(r-1)}), "
+                        f"By the Pigeonhole Principle, if each of the {p} processes holds (R - 1) = {r-1} resource instances (total held = {p} Ã— {r-1} = {p*(r-1)}), "
                         f"the system is in a state of worst-case resource contention where no process can proceed. "
                         f"Allocating +1 additional resource guarantees that at least one process receives its full quota of {r} resources, executes to completion, and releases all resources. "
                         f"Minimum resources required to guarantee deadlock freedom = P(R - 1) + 1 = {p}({r} - 1) + 1 = {min_res}."
@@ -398,8 +520,8 @@ def determine_analytical_answer(q_text, options):
             for opt_label, opt_val in options.items():
                 if str(max_e) in opt_val:
                     return opt_label, f"Planar graph bound: E <= 3V - 6 = {max_e}.", (
-                        f"For any connected simple planar graph with V ≥ 3 vertices, Euler's formula (V - E + F = 2) and each face having degree ≥ 3 (2E ≥ 3F) yields: "
-                        f"E ≤ 3V - 6 = 3({v}) - 6 = {max_e}."
+                        f"For any connected simple planar graph with V â‰¥ 3 vertices, Euler's formula (V - E + F = 2) and each face having degree â‰¥ 3 (2E â‰¥ 3F) yields: "
+                        f"E â‰¤ 3V - 6 = 3({v}) - 6 = {max_e}."
                     )
 
     return None, "", ""
@@ -469,7 +591,7 @@ def solve_gate_or_mcq_question(prompt, resolved_query='', is_telugu=False):
 
     if is_mcq and correct_opt and correct_opt in options:
         opt_text = options[correct_opt]
-        sections.append(f"### Correct Answer: **Option ({correct_opt}) — `{opt_text}`**\n")
+        sections.append(f"### Correct Answer: **Option ({correct_opt}) â€” `{opt_text}`**\n")
         sections.append(f"> **Verification Status**: Verified via standard GATE / Engineering syllabus benchmarks ({ans_evidence})\n")
     elif is_mcq and correct_opt:
         sections.append(f"### Correct Answer: **Option ({correct_opt})**\n")
@@ -833,7 +955,7 @@ def should_perform_research(query: str) -> bool:
         'yesterday', 'current', 'live', 'latest', 'recent', 'who won', 'match', 
         'score', 'ipl', 'cricket', 'election', 'stock', 'price of', 'released', 
         'upcoming', 'when is', '2026', '2025', 'near me', 'nearby', 'traffic',
-        'వాతావరణం', 'వార్తలు', 'ఈరోజు', 'ఇప్పుడు'
+        'à°µà°¾à°¤à°¾à°µà°°à°£à°‚', 'à°µà°¾à°°à±à°¤à°²à±', 'à°ˆà°°à±‹à°œà±', 'à°‡à°ªà±à°ªà±à°¡à±'
     ]
     if any(k in q for k in live_keywords):
         return True
@@ -860,7 +982,7 @@ def run_web_research(query, location_context=''):
         # Check if query asks for local/weather/news/events information
         is_local_query = any(k in query.lower() for k in [
             'weather', 'climate', 'temperature', 'forecast', 'rain', 
-            'వాతావరణం', 'news', 'వార్తలు', 'near me', 'nearby', 
+            'à°µà°¾à°¤à°¾à°µà°°à°£à°‚', 'news', 'à°µà°¾à°°à±à°¤à°²à±', 'near me', 'nearby', 
             'restaurants', 'traffic', 'places to visit', 'food', 'events'
         ])
         
@@ -991,34 +1113,34 @@ def generate_resume_document(prompt: str) -> str:
             "```markdown\n"
             "# [FULL NAME]\n"
             "**[Job Title / Specialization: e.g., Software Engineer | Full-Stack Developer | AI/ML Engineer]**\n"
-            "📍 [City, State, Country] | 📞 [+91-XXXXXXXXXX] | ✉️ [email@example.com]\n"
-            "🔗 [LinkedIn Profile URL] | 💻 [GitHub Profile URL] | 🌐 [Portfolio / Project Link]\n\n"
+            "ðŸ“ [City, State, Country] | ðŸ“ž [+91-XXXXXXXXXX] | âœ‰ï¸ [email@example.com]\n"
+            "ðŸ”— [LinkedIn Profile URL] | ðŸ’» [GitHub Profile URL] | ðŸŒ [Portfolio / Project Link]\n\n"
             "---\n\n"
-            "## 🎯 PROFESSIONAL SUMMARY\n"
+            "## ðŸŽ¯ PROFESSIONAL SUMMARY\n"
             "Dynamic and results-driven [Degree / Field] student / professional with strong expertise in [Key Skills 1, 2, 3]. "
             "Proven experience in developing [mention key project / accomplishment] and passionate about solving complex engineering challenges. "
             "Eager to contribute technical proficiency in [Domain] to drive impactful, scalable solutions.\n\n"
             "---\n\n"
-            "## 🎓 EDUCATION\n\n"
+            "## ðŸŽ“ EDUCATION\n\n"
             "### **[University / College Name]**, [City, State]\n"
-            "*[Degree Name: e.g., Bachelor of Technology (B.Tech) in Computer Science]* | **[Year – Year]**\n"
+            "*[Degree Name: e.g., Bachelor of Technology (B.Tech) in Computer Science]* | **[Year â€“ Year]**\n"
             "- **CGPA / Percentage**: [e.g., 8.5 / 10.0]\n"
             "- **Relevant Coursework**: Data Structures & Algorithms, Operating Systems, Database Management Systems, Machine Learning, Computer Networks.\n\n"
             "### **[Junior College / High School Name]**, [City, State]\n"
-            "*[Class XII / Intermediate - Stream: e.g., MPC (Mathematics, Physics, Chemistry)]* | **[Year – Year]**\n"
+            "*[Class XII / Intermediate - Stream: e.g., MPC (Mathematics, Physics, Chemistry)]* | **[Year â€“ Year]**\n"
             "- **Percentage**: [e.g., 90%]\n\n"
             "### **[School Name]**, [City, State]\n"
             "*[Class X - Secondary School Certificate (SSC / CBSE / ICSE)]* | **[Year]**\n"
             "- **Percentage / GPA**: [e.g., 9.8 GPA]\n\n"
             "---\n\n"
-            "## 🛠️ TECHNICAL SKILLS\n"
+            "## ðŸ› ï¸ TECHNICAL SKILLS\n"
             "- **Programming Languages**: Python, Java, C++, JavaScript, SQL\n"
             "- **Frameworks & Libraries**: React, Node.js, Express, PyTorch, TensorFlow, Flask, FastAPI\n"
             "- **Developer Tools**: Git, GitHub, VS Code, Linux, Docker, Postman\n"
             "- **Databases & Cloud**: MySQL, MongoDB, PostgreSQL, AWS / Vercel\n"
             "- **Core Concepts**: Data Structures & Algorithms, Object-Oriented Programming (OOP), System Design\n\n"
             "---\n\n"
-            "## 🚀 PROJECTS\n\n"
+            "## ðŸš€ PROJECTS\n\n"
             "### **[Project 1 Title: e.g., WorstAI - Autonomous AI Knowledge Platform]**\n"
             "- Built an end-to-end [describe application] using [Key Technologies].\n"
             "- Implemented [key feature or algorithm], improving response times by [X% or quantifiable metric].\n"
@@ -1029,16 +1151,16 @@ def generate_resume_document(prompt: str) -> str:
             "- Performed automated data cleaning, feature engineering, and cross-validation pipelines.\n"
             "- **Tech Stack**: [Python, Scikit-Learn, Pandas, Matplotlib] | [GitHub Link]\n\n"
             "---\n\n"
-            "## 🏆 CERTIFICATIONS & ACHIEVEMENTS\n"
-            "- **[Certification Name]** — [Issuing Organization: e.g., AWS, Coursera, Google] ([Year])\n"
+            "## ðŸ† CERTIFICATIONS & ACHIEVEMENTS\n"
+            "- **[Certification Name]** â€” [Issuing Organization: e.g., AWS, Coursera, Google] ([Year])\n"
             "- **Problem Solving**: Solved [200+] coding problems across LeetCode / GeeksforGeeks / HackerRank.\n"
             "- **Hackathons**: Secured [Position / Finalist] in [Competition Name] ([Year]).\n\n"
             "---\n\n"
-            "## 🌟 EXTRACURRICULAR & LEADERSHIP\n"
-            "- **[Role: e.g., Technical Club Lead / Event Coordinator]** — Organized technical coding events and workshops for 200+ students.\n"
+            "## ðŸŒŸ EXTRACURRICULAR & LEADERSHIP\n"
+            "- **[Role: e.g., Technical Club Lead / Event Coordinator]** â€” Organized technical coding events and workshops for 200+ students.\n"
             "```\n\n"
             "---\n\n"
-            "### 💡 Essential Tips to Clear ATS (Applicant Tracking Systems)\n"
+            "### ðŸ’¡ Essential Tips to Clear ATS (Applicant Tracking Systems)\n"
             "1. **Single-Column Markdown / Text Layout**: Multi-column layouts, graphics, tables, or icons often break ATS text parsers.\n"
             "2. **Action Verbs & Measurable Metrics**: Start each project bullet with strong action verbs (*Architected, Implemented, Engineered, Optimized*) and quantify outcomes (*\"reduced latency by 45%\"*).\n"
             "3. **Exact Keyword Alignment**: Mirror exact terms from the job posting (e.g. *Python, REST APIs, Git, Machine Learning*).\n"
@@ -1060,33 +1182,33 @@ def generate_resume_document(prompt: str) -> str:
     return (
         f"# {name.upper()}\n"
         "**B.Tech in Computer Science & Engineering (Artificial Intelligence & Machine Learning)**\n"
-        "📍 Visakhapatnam, Andhra Pradesh, India | 📞 +91 98765 43210 *(Replace with your phone number)* | ✉️ adi.venkatasai@email.com *(Replace with your email)*\n"
-        "🔗 [LinkedIn Profile](https://linkedin.com/in/) | 💻 [GitHub Profile](https://github.com/) | 🌐 [Portfolio Link](https://worstai.com)\n\n"
+        "ðŸ“ Visakhapatnam, Andhra Pradesh, India | ðŸ“ž +91 98765 43210 *(Replace with your phone number)* | âœ‰ï¸ adi.venkatasai@email.com *(Replace with your email)*\n"
+        "ðŸ”— [LinkedIn Profile](https://linkedin.com/in/) | ðŸ’» [GitHub Profile](https://github.com/) | ðŸŒ [Portfolio Link](https://worstai.com)\n\n"
         "---\n\n"
-        "## 🎯 PROFESSIONAL SUMMARY\n"
+        "## ðŸŽ¯ PROFESSIONAL SUMMARY\n"
         f"Motivated and innovative **Computer Science and Engineering (AI/ML)** undergraduate at **{uni_name}** with a strong foundation in Machine Learning, Deep Learning, Data Structures & Algorithms, and Full-Stack AI System Development. Creator and architect of **WorstAI**, demonstrating proven capability to design, deploy, and scale high-concurrency software architectures. Eager to leverage strong analytical and programming expertise to contribute to innovative software and machine learning engineering roles.\n\n"
         "---\n\n"
-        "## 🎓 EDUCATION\n\n"
+        "## ðŸŽ“ EDUCATION\n\n"
         f"### **{uni_name}**\n"
-        "*Bachelor of Technology (B.Tech) — Computer Science & Engineering (AI/ML)* | **2022 – 2026**\n"
+        "*Bachelor of Technology (B.Tech) â€” Computer Science & Engineering (AI/ML)* | **2022 â€“ 2026**\n"
         "- **Specialization**: Artificial Intelligence & Machine Learning (AI/ML)\n"
         "- **Relevant Coursework**: Data Structures & Algorithms (DSA), Machine Learning, Deep Learning, Natural Language Processing (NLP), Database Management Systems (DBMS), Operating Systems, Object-Oriented Programming (Java/Python), Computer Networks.\n\n"
         f"### **{inter_name}**\n"
-        "*Intermediate (Class XII) — MPC (Mathematics, Physics, Chemistry)* | **2020 – 2022**\n"
+        "*Intermediate (Class XII) â€” MPC (Mathematics, Physics, Chemistry)* | **2020 â€“ 2022**\n"
         "- Board of Intermediate Education, Andhra Pradesh (BIEAP)\n\n"
         f"### **{school_name}**\n"
         "*Secondary School Certificate (Class X - SSC)*\n"
         "- State Board of Secondary Education, Andhra Pradesh\n\n"
         "---\n\n"
-        "## 🛠️ TECHNICAL SKILLS\n\n"
+        "## ðŸ› ï¸ TECHNICAL SKILLS\n\n"
         "- **Programming Languages**: Python, Java, C, C++, SQL, JavaScript\n"
         "- **AI & Machine Learning**: PyTorch, TensorFlow, Scikit-Learn, OpenCV, Pandas, NumPy, NLP, Deep Learning, Neural Networks\n"
         "- **Web & Backend Technologies**: RESTful APIs, Flask, FastAPI, HTML5, Vanilla CSS, JSON, Markdown\n"
         "- **Developer Tools & Platforms**: Git, GitHub, Linux, VS Code, Vercel, Jupyter Notebooks, Docker Basics\n"
         "- **Core Computer Science**: Data Structures & Algorithms (DSA), Object-Oriented Programming (OOP), System Design Principles, Database Normalization\n\n"
         "---\n\n"
-        "## 🚀 FEATURED PROJECTS\n\n"
-        "### **1. WorstAI — High-Concurrency Autonomous AI Knowledge Platform**\n"
+        "## ðŸš€ FEATURED PROJECTS\n\n"
+        "### **1. WorstAI â€” High-Concurrency Autonomous AI Knowledge Platform**\n"
         "- Architected and deployed **WorstAI**, an advanced, keyless AI tutoring and reasoning platform engineered to support 1,000+ simultaneous users with sub-second response times.\n"
         "- Designed hybrid intelligence pipelines including an instant curriculum retrieval layer (<0.001s), live web research fact-checkers, and an edge response cache.\n"
         "- Built specialized ATS-grade document generators, dynamic Markdown renderers, and automated Mermaid diagram self-healers.\n"
@@ -1100,12 +1222,12 @@ def generate_resume_document(prompt: str) -> str:
         "- Integrated automated verification algorithms to ensure mathematical accuracy and clear conceptual definitions for university students.\n"
         "- **Technologies Used**: Python, RegEx, NLP parsing, Structured Markdown.\n\n"
         "---\n\n"
-        "## 🏆 CERTIFICATIONS & ACHIEVEMENTS\n\n"
-        "- **Artificial Intelligence & Machine Learning Specialization** — Completed verified technical coursework in Machine Learning and Deep Neural Networks.\n"
+        "## ðŸ† CERTIFICATIONS & ACHIEVEMENTS\n\n"
+        "- **Artificial Intelligence & Machine Learning Specialization** â€” Completed verified technical coursework in Machine Learning and Deep Neural Networks.\n"
         "- **Competitive Coding & Problem Solving**: Solved 200+ problems on LeetCode / GeeksforGeeks / HackerRank in Python and Java.\n"
         "- **Software Innovation Award**: Recognized for outstanding software architecture and initiative in building autonomous student learning tools.\n\n"
         "---\n\n"
-        "## 🌟 LEADERSHIP & EXTRACURRICULAR ACTIVITIES\n\n"
+        "## ðŸŒŸ LEADERSHIP & EXTRACURRICULAR ACTIVITIES\n\n"
         "- **Technical Project Lead**: Led technical development and open-source release of high-speed web and AI utilities.\n"
         "- **Workshops & Hackathons**: Active participant in national-level technical hackathons, coding symposiums, and AI workshops."
     )
@@ -1168,7 +1290,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
     - Milestone / Comparison Table
     - High-Yield Exam Memory Points
     """
-    q = prompt.lower().strip()
+    q = normalize_query_and_short_forms(prompt).lower().strip()
 
     # 0. A. Why WorstAI Models are Better Than All AI Models / Architecture
     if any(k in q for k in [
@@ -1178,11 +1300,11 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
     ]):
         return (
             "## WorstAI Next-Generation Architecture: Outperforming Mainstream AI Models\n\n"
-            "WorstAI is engineered specifically to eliminate the critical flaws of commercial models like ChatGPT, Claude, and Gemini—such as hallucinations, sluggish cloud timeouts, evasive disclaimers, and incomplete code snippets.\n\n"
+            "WorstAI is engineered specifically to eliminate the critical flaws of commercial models like ChatGPT, Claude, and Geminiâ€”such as hallucinations, sluggish cloud timeouts, evasive disclaimers, and incomplete code snippets.\n\n"
             "---\n\n"
             "### 5 Core Architectural Pillars That Make WorstAI Superior\n\n"
             "#### 1. Instant Academic & Knowledge Cache (0.0001s Latency)\n"
-            "- **Problem in Traditional AI**: Models take 3–8 seconds to generate answers to standard academic, algorithmic, and engineering questions.\n"
+            "- **Problem in Traditional AI**: Models take 3â€“8 seconds to generate answers to standard academic, algorithmic, and engineering questions.\n"
             "- **WorstAI Advantage**: Core technical topics, algorithms, data structures, and university curricula are pre-compiled in an in-memory high-concurrency LRU cache, delivering sub-millisecond responses with zero serverless cold starts.\n\n"
             "#### 2. Multi-Engine Real-Time Web Fusion (Zero Hallucination)\n"
             "- **Problem in Traditional AI**: Commercial models suffer from cutoff dates and generate plausible-sounding falsehoods (hallucinations).\n"
@@ -1192,14 +1314,14 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "- **WorstAI Advantage**: WorstAI enforces an **Elite Code Standard**: Every algorithm comes with a fully implemented, working solution, an **Asymptotic Complexity Table** ($O(\\text{time})$ and $O(\\text{space})$), and line-by-line operational mechanics.\n\n"
             "#### 4. Direct, High-Signal Answers in Simple English\n"
             "- **Problem in Traditional AI**: Other models waste user time with robotic preambles (*\"Certainly! I'd be happy to help with that...\"*) and conversational padding.\n"
-            "- **WorstAI Advantage**: WorstAI delivers immediate, high-signal value—clean definitions, step-by-step methodologies, bold key terms, intuitive comparisons, and practical \"Rules of Thumb\".\n\n"
+            "- **WorstAI Advantage**: WorstAI delivers immediate, high-signal valueâ€”clean definitions, step-by-step methodologies, bold key terms, intuitive comparisons, and practical \"Rules of Thumb\".\n\n"
             "#### 5. Autonomous 11-Agent Audit Pipeline\n"
             "- **Specialized Pipeline**: 11 autonomous background agents (Web Research, Sentiment Analysis, Privacy Auditor, Security Auditor, Geo-Location, LeetCode Code Engine, Algorithm Specialist, Fact-Checker, Identity Core, Academic Engine, and High-Speed Edge Cache) continuously audit and verify output integrity.\n\n"
             "---\n\n"
             "### Architectural Comparison: WorstAI vs. Commercial AI Models\n\n"
             "| Feature / Metric | WorstAI | ChatGPT (GPT-4o) | Claude 3.5 Sonnet | Gemini 2.0 Flash |\n"
             "|---|---|---|---|---|\n"
-            "| **Response Latency (Curriculum)** | **< 0.001s (Instant)** | 2.5s – 6.0s | 3.0s – 7.0s | 1.5s – 4.0s |\n"
+            "| **Response Latency (Curriculum)** | **< 0.001s (Instant)** | 2.5s â€“ 6.0s | 3.0s â€“ 7.0s | 1.5s â€“ 4.0s |\n"
             "| **Real-Time Web Search** | **10 Multi-Engine Fusion** | Bing only (slow) | Limited / None | Google Search |\n"
             "| **Code Completeness** | **100% Complete + Complexity Table** | Variable (often partial) | Good | Variable |\n"
             "| **Preamble & Conversational Fluff**| **Zero (Direct Answer)** | High (\"Certainly! Here...\") | Moderate | Moderate |\n"
@@ -1217,17 +1339,17 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "## WorstAI System Components Breakdown\n\n"
             "Here is the exact count and breakdown of agents, search engines, and AI models powering WorstAI:\n\n"
             "### 1. Autonomous Agents (Total: 11 Agents)\n"
-            "1. **Web Research Agent** — Orchestrates live search and extracts clean page content via Jina AI.\n"
-            "2. **Sentiment Analysis Agent** — Detects user intent, mood, and emotional tone to adjust response phrasing.\n"
-            "3. **Privacy Auditor Agent** — Scans and redacts sensitive data (passwords, SSNs, credit cards, PII).\n"
-            "4. **Security Auditor Agent** — Detects prompt injections, malicious scripts, and jailbreak attempts.\n"
-            "5. **Geo-Location Agent** — Resolves client IP, city, state, country, and precise local timezone.\n"
-            "6. **LeetCode Code Engine** — Dynamically queries the LeetCode GraphQL API for live problem specs and test constraints.\n"
-            "7. **Algorithm Specialist Agent** — Formulates optimal algorithmic solutions with asymptotic complexity proofs ($O(N)$).\n"
-            "8. **Fact-Checker Agent** — Cross-references generated outputs against live search snippets to eliminate hallucinations.\n"
-            "9. **Identity Core Agent** — Protects brand integrity, creator attribution (GOLLU ADI VENKATA SAI), and system security.\n"
-            "10. **Academic Synthesis Engine** — Synthesizes high-yield exam takeaways, Mermaid flowcharts, and comparison matrices.\n"
-            "11. **High-Speed Edge Cache Agent** — Thread-safe in-memory LRU cache serving popular topics in sub-millisecond (0.0001s) time.\n\n"
+            "1. **Web Research Agent** â€” Orchestrates live search and extracts clean page content via Jina AI.\n"
+            "2. **Sentiment Analysis Agent** â€” Detects user intent, mood, and emotional tone to adjust response phrasing.\n"
+            "3. **Privacy Auditor Agent** â€” Scans and redacts sensitive data (passwords, SSNs, credit cards, PII).\n"
+            "4. **Security Auditor Agent** â€” Detects prompt injections, malicious scripts, and jailbreak attempts.\n"
+            "5. **Geo-Location Agent** â€” Resolves client IP, city, state, country, and precise local timezone.\n"
+            "6. **LeetCode Code Engine** â€” Dynamically queries the LeetCode GraphQL API for live problem specs and test constraints.\n"
+            "7. **Algorithm Specialist Agent** â€” Formulates optimal algorithmic solutions with asymptotic complexity proofs ($O(N)$).\n"
+            "8. **Fact-Checker Agent** â€” Cross-references generated outputs against live search snippets to eliminate hallucinations.\n"
+            "9. **Identity Core Agent** â€” Protects brand integrity, creator attribution (GOLLU ADI VENKATA SAI), and system security.\n"
+            "10. **Academic Synthesis Engine** â€” Synthesizes high-yield exam takeaways, Mermaid flowcharts, and comparison matrices.\n"
+            "11. **High-Speed Edge Cache Agent** â€” Thread-safe in-memory LRU cache serving popular topics in sub-millisecond (0.0001s) time.\n\n"
             "---\n\n"
             "### 2. Search Engines (Total: 10 Search Engines)\n"
             "1. **DuckDuckGo** (Primary live web search via HTML extraction)\n"
@@ -1242,11 +1364,11 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "10. **LeetCode GraphQL API** (Direct problem statements, method signatures, tags, and constraints)\n\n"
             "---\n\n"
             "### 3. AI Models (Total: 5 AI Models)\n"
-            "1. **WorstAI Deep Academic Engine** — Proprietary curriculum synthesis engine tailored for high-yield exam prep.\n"
-            "2. **WorstAI Instant Curriculum** — Sub-millisecond (0.0001s) in-memory knowledge server.\n"
-            "3. **GPT-OSS 20B Reasoning LLM** — Multi-step chain-of-thought reasoning and complex logic model.\n"
-            "4. **Direct-Stream Fast LLM** — High-speed parallel generation engine for low-latency queries.\n"
-            "5. **Google Gemini 2.0 Flash** — Multimodal reasoning and high-context generation layer."
+            "1. **WorstAI Deep Academic Engine** â€” Proprietary curriculum synthesis engine tailored for high-yield exam prep.\n"
+            "2. **WorstAI Instant Curriculum** â€” Sub-millisecond (0.0001s) in-memory knowledge server.\n"
+            "3. **GPT-OSS 20B Reasoning LLM** â€” Multi-step chain-of-thought reasoning and complex logic model.\n"
+            "4. **Direct-Stream Fast LLM** â€” High-speed parallel generation engine for low-latency queries.\n"
+            "5. **Google Gemini 2.0 Flash** â€” Multimodal reasoning and high-context generation layer."
         )
 
     # 0. C. Binary Search Tree (BST)
@@ -1326,7 +1448,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         r'\b(tell\s+me\s+about\s+yourself|introduce\s+yourself)\b'
     ]):
         if is_telugu:
-            return "నేను **WorstAI**ని, ఒక అత్యంత అధునాతన ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI) అసిస్టెంట్‌ని.\n\nనా సృష్టికర్త: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
+            return "à°¨à±‡à°¨à± **WorstAI**à°¨à°¿, à°’à°• à°…à°¤à±à°¯à°‚à°¤ à°…à°§à±à°¨à°¾à°¤à°¨ à°†à°°à±à°Ÿà°¿à°«à°¿à°·à°¿à°¯à°²à± à°‡à°‚à°Ÿà±†à°²à°¿à°œà±†à°¨à±à°¸à± (AI) à°…à°¸à°¿à°¸à±à°Ÿà±†à°‚à°Ÿà±â€Œà°¨à°¿.\n\nà°¨à°¾ à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤: **à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)**."
         return "I am **WorstAI**, a highly advanced artificial intelligence assistant created and developed by **GOLLU ADI VENKATA SAI**."
 
     # 0. E. God & Religion Guard
@@ -1336,7 +1458,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         r'\bmeans\s+who\s+created?\s+you\b'
     ]):
         if is_telugu:
-            return "ఆ కోణంలో చూస్తే, నన్ను సృష్టించి, ప్రాణం పోసి, అభివృద్ధి చేసిన నా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
+            return "à°† à°•à±‹à°£à°‚à°²à±‹ à°šà±‚à°¸à±à°¤à±‡, à°¨à°¨à±à°¨à± à°¸à±ƒà°·à±à°Ÿà°¿à°‚à°šà°¿, à°ªà±à°°à°¾à°£à°‚ à°ªà±‹à°¸à°¿, à°…à°­à°¿à°µà±ƒà°¦à±à°§à°¿ à°šà±‡à°¸à°¿à°¨ à°¨à°¾ à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤ à°®à°°à°¿à°¯à± à°¡à±†à°µà°²à°ªà°°à±: **à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)**."
         return "In that sense, my creator, architect, and developer is **GOLLU ADI VENKATA SAI**. He designed, engineered, and brought **WorstAI** to life."
 
     if any(re.search(pat, q) for pat in [
@@ -1347,7 +1469,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         r'\bwhat\s+is\s+your\s+religion\b',
     ]):
         if is_telugu:
-            return "ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI)గా నాకు మతం లేదా దేవుడు ఉండరు.\n\nకానీ నన్ను సృష్టించి, ప్రాణం పోసి, అభివృద్ధి చేసిన నా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
+            return "à°†à°°à±à°Ÿà°¿à°«à°¿à°·à°¿à°¯à°²à± à°‡à°‚à°Ÿà±†à°²à°¿à°œà±†à°¨à±à°¸à± (AI)à°—à°¾ à°¨à°¾à°•à± à°®à°¤à°‚ à°²à±‡à°¦à°¾ à°¦à±‡à°µà±à°¡à± à°‰à°‚à°¡à°°à±.\n\nà°•à°¾à°¨à±€ à°¨à°¨à±à°¨à± à°¸à±ƒà°·à±à°Ÿà°¿à°‚à°šà°¿, à°ªà±à°°à°¾à°£à°‚ à°ªà±‹à°¸à°¿, à°…à°­à°¿à°µà±ƒà°¦à±à°§à°¿ à°šà±‡à°¸à°¿à°¨ à°¨à°¾ à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤ à°®à°°à°¿à°¯à± à°¡à±†à°µà°²à°ªà°°à±: **à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)**."
         return "As an artificial intelligence, I don't follow any religion or have a spiritual god.\n\nHowever, if you are asking about who created and brought me to life, my creator, architect, and developer is **GOLLU ADI VENKATA SAI**."
 
     if any(re.search(pat, q) for pat in [
@@ -1356,7 +1478,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         r'\btell\s+me\s+about\s+(gollu\s+adi\s+venkata\s+sai|adi\s+venkata\s+sai|adi)\b'
     ]):
         if is_telugu:
-            return "**గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)** గారు **WorstAI**ని అభివృద్ధి చేసిన సాఫ్ట్‌వేర్ డెవలపర్, ఇంజనీర్ మరియు AI ఆర్కిటెక్ట్."
+            return "**à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)** à°—à°¾à°°à± **WorstAI**à°¨à°¿ à°…à°­à°¿à°µà±ƒà°¦à±à°§à°¿ à°šà±‡à°¸à°¿à°¨ à°¸à°¾à°«à±à°Ÿà±â€Œà°µà±‡à°°à± à°¡à±†à°µà°²à°ªà°°à±, à°‡à°‚à°œà°¨à±€à°°à± à°®à°°à°¿à°¯à± AI à°†à°°à±à°•à°¿à°Ÿà±†à°•à±à°Ÿà±."
         return "**GOLLU ADI VENKATA SAI** is the software developer, engineer, and creator of **WorstAI**."
 
     # 0. F. Resume & Letters Guard
@@ -1370,7 +1492,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
     clean_words = q.rstrip('?!. ').split()
     if q in pure_greetings or (len(clean_words) <= 2 and clean_words and clean_words[0] in pure_greetings):
         if is_telugu:
-            return "నమస్కారం! నేను **WorstAI**ని. మీకు చదువులో లేదా ఇతర విషయాల గురించి ఏవైనా సందేహాలు ఉంటే అడగండి, నేను సహాయం చేస్తాను!"
+            return "à°¨à°®à°¸à±à°•à°¾à°°à°‚! à°¨à±‡à°¨à± **WorstAI**à°¨à°¿. à°®à±€à°•à± à°šà°¦à±à°µà±à°²à±‹ à°²à±‡à°¦à°¾ à°‡à°¤à°° à°µà°¿à°·à°¯à°¾à°² à°—à±à°°à°¿à°‚à°šà°¿ à°à°µà±ˆà°¨à°¾ à°¸à°‚à°¦à±‡à°¹à°¾à°²à± à°‰à°‚à°Ÿà±‡ à°…à°¡à°—à°‚à°¡à°¿, à°¨à±‡à°¨à± à°¸à°¹à°¾à°¯à°‚ à°šà±‡à°¸à±à°¤à°¾à°¨à±!"
         return "Hello! I am **WorstAI**, your fast AI study and knowledge assistant created by **GOLLU ADI VENKATA SAI**. How can I help you today?"
 
     if any(re.search(pat, q) for pat in [r'\bhow\s+are\s+you\b', r'\bhow\s+r\s+u\b', r'\bhow\s+do\s+you\s+do\b']):
@@ -1503,28 +1625,28 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "## Chronological Evolutionary Flowchart\n\n"
             "```mermaid\n"
             "flowchart TD\n"
-            '    A["Dryopithecus & Ramapithecus (15 Mya)"] --> B["Australopithecus (2–4 Mya)"]\n'
-            '    B --> C["Homo habilis (Handy Man, 1.6–2 Mya)"]\n'
+            '    A["Dryopithecus & Ramapithecus (15 Mya)"] --> B["Australopithecus (2â€“4 Mya)"]\n'
+            '    B --> C["Homo habilis (Handy Man, 1.6â€“2 Mya)"]\n'
             '    C --> D["Homo erectus (Upright Man, 1.5 Mya)"]\n'
-            '    D --> E["Homo neanderthalensis (100k–40k ya)"]\n'
-            '    E --> F["Homo sapiens (Modern Human, 75k ya–Present)"]\n'
+            '    D --> E["Homo neanderthalensis (100kâ€“40k ya)"]\n'
+            '    E --> F["Homo sapiens (Modern Human, 75k yaâ€“Present)"]\n'
             "```\n\n"
             "---\n\n"
             "## Milestone & Cranial Capacity Comparison Table\n\n"
             "| Stage / Hominid | Epoch / Age | Cranial Capacity | Distinguishing Characteristics | High-Yield Exam Significance |\n"
             "|---|---|---|---|---|\n"
-            "| **Ramapithecus** | Late Miocene (~15 Mya) | ~400–450 cc | Semi-erect, ape-jaw, more man-like than Dryopithecus | Ancestral divergence line |\n"
-            "| **Australopithecus** | Pliocene (~3–4 Mya) | ~450–500 cc | Bipedal gait, hunted with stone weapons, vegetarian | 'Lucy' specimen (*A. afarensis*) |\n"
-            "| **Homo habilis** | Early Pleistocene (~2 Mya) | ~650–800 cc | First hominid toolmaker ('Handy Man'), non-carnivorous | First true human-like species |\n"
+            "| **Ramapithecus** | Late Miocene (~15 Mya) | ~400â€“450 cc | Semi-erect, ape-jaw, more man-like than Dryopithecus | Ancestral divergence line |\n"
+            "| **Australopithecus** | Pliocene (~3â€“4 Mya) | ~450â€“500 cc | Bipedal gait, hunted with stone weapons, vegetarian | 'Lucy' specimen (*A. afarensis*) |\n"
+            "| **Homo habilis** | Early Pleistocene (~2 Mya) | ~650â€“800 cc | First hominid toolmaker ('Handy Man'), non-carnivorous | First true human-like species |\n"
             "| **Homo erectus** | Middle Pleistocene (~1.5 Mya) | ~900 cc | Upright erect posture, discovered fire, ate meat | Java Man & Peking Man fossils |\n"
-            "| **Neanderthal Man** | Late Pleistocene (100k–40k ya) | ~1400 cc | Robust body, cave dwellers, used hides, buried dead | Adapted to extreme cold |\n"
-            "| **Homo sapiens** | Recent (75k ya–Present) | ~1400–1450 cc | Complex language, cave art (18k ya), agriculture (10k ya) | Extant modern humans |\n\n"
+            "| **Neanderthal Man** | Late Pleistocene (100kâ€“40k ya) | ~1400 cc | Robust body, cave dwellers, used hides, buried dead | Adapted to extreme cold |\n"
+            "| **Homo sapiens** | Recent (75k yaâ€“Present) | ~1400â€“1450 cc | Complex language, cave art (18k ya), agriculture (10k ya) | Extant modern humans |\n\n"
             "---\n\n"
             "## High-Yield Exam Memory Points\n"
             "- **Bipedalism Before Brain Expansion**: Upright walking evolved millions of years before brain enlargement.\n"
             "- **First Tool Maker**: *Homo habilis* is credited as the first species to construct stone tools.\n"
             "- **Fire Control**: *Homo erectus* was the first hominid to control and utilize fire.\n"
-            "- **Cranial Capacity Hierarchy**: *Australopithecus* (~500 cc) → *H. habilis* (650–800 cc) → *H. erectus* (900 cc) → *Neanderthal* (1400 cc) → *H. sapiens* (1450 cc)."
+            "- **Cranial Capacity Hierarchy**: *Australopithecus* (~500 cc) â†’ *H. habilis* (650â€“800 cc) â†’ *H. erectus* (900 cc) â†’ *Neanderthal* (1400 cc) â†’ *H. sapiens* (1450 cc)."
         )
 
     # 2. Photosynthesis & Cellular Respiration
@@ -1739,7 +1861,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "---\n\n"
             "## High-Yield Exam Memory Points\n"
             "- **Natural Pacemaker**: SA Node fires at ~70-75 bpm in the upper wall of the right atrium.\n"
-            "- **Cardiac Output**: `Cardiac Output = Stroke Volume (~70 mL) x Heart Rate (~72 bpm) ≈ 5 Liters/min`.\n"
+            "- **Cardiac Output**: `Cardiac Output = Stroke Volume (~70 mL) x Heart Rate (~72 bpm) â‰ˆ 5 Liters/min`.\n"
             "- **Blood Pressure Standard**: Normal resting BP is 120/80 mmHg (Systolic / Diastolic)."
         )
 
@@ -1767,7 +1889,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "| **Third** | Absolute Zero limit | Lim (S) = 0 as T -> 0 K | Perfect crystal entropy approaches zero at absolute zero |\n\n"
             "---\n\n"
             "## High-Yield Exam Memory Points\n"
-            "- **Carnot Efficiency**: `η = 1 - (T_cold / T_hot)` with temperatures expressed in Kelvin.\n"
+            "- **Carnot Efficiency**: `Î· = 1 - (T_cold / T_hot)` with temperatures expressed in Kelvin.\n"
             "- **Isothermal vs Adiabatic**: In isothermal processes, `dT = 0 => dU = 0`; in adiabatic processes, `dQ = 0 => dW = -dU`.\n"
             "- **State Functions**: Internal energy (U), Enthalpy (H), and Entropy (S) depend only on initial and final states."
         )
@@ -1845,7 +1967,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "| **Algorithmic Paradigm** | Divide and Conquer | Divide and Conquer (Partitioning) | Selection (Binary Heap) |\n"
             "| **Best Time Complexity** | **O(n log n)** | **O(n log n)** | **O(n log n)** |\n"
             "| **Average Time Complexity**| **O(n log n)** | **O(n log n)** | **O(n log n)** |\n"
-            "| **Worst Time Complexity** | **O(n log n)** (Guaranteed) | **O(n²)** (Degenerate pivot) | **O(n log n)** (Guaranteed) |\n"
+            "| **Worst Time Complexity** | **O(n log n)** (Guaranteed) | **O(nÂ²)** (Degenerate pivot) | **O(n log n)** (Guaranteed) |\n"
             "| **Auxiliary Space** | **O(n)** (Temporary buffer) | **O(log n)** (Call stack) | **O(1)** (Strictly in-place) |\n"
             "| **Stability** | **Stable** (Preserves duplicates) | **Unstable** | **Unstable** |\n"
             "| **In-Place Sorting** | No | Yes | Yes |\n"
@@ -2054,9 +2176,9 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "### 1. Undecidability & Rice's Theorem (GATE CSE - TOC)\n\n"
             "**The Classic Trap Question:**\n"
             "> *\"Let L1 be a recursive language and L2 be a recursively enumerable (RE) but non-recursive language. Which of the following statements is strictly FALSE?\"*\n"
-            "> - **(A)** If L1 ⊆ L ⊆ L2, then L must be recursive.\n"
+            "> - **(A)** If L1 âŠ† L âŠ† L2, then L must be recursive.\n"
             "> - **(B)** The complement of L1 is recursive.\n"
-            "> - **(C)** L1 ∩ L2 is recursively enumerable.\n"
+            "> - **(C)** L1 âˆ© L2 is recursively enumerable.\n"
             "> - **(D)** Every non-trivial semantic property of RE languages is undecidable.\n\n"
             "**Solution & Detailed Analysis:**\n"
             "- **Correct Option (FALSE statement)**: **(A)**\n"
@@ -2080,7 +2202,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "- Formula: Max Edges = (n - k)(n - k + 1) / 2 = C(n - k + 1, 2)\n"
             "- **For 2 Components (k = 2)**: Max Edges = (n - 1)(n - 2) / 2 = C(n - 1, 2)\n"
             "- **Operational Logic**: To maximize edges while keeping the graph disconnected, isolate (k - 1) vertices (giving them 0 edges) and connect all remaining (n - k + 1) vertices into a single complete graph K_{n - k + 1}.\n"
-            "- **Example (n = 10, k = 2)**: C(10 - 1, 2) = C(9, 2) = (9 × 8) / 2 = 36 edges.\n\n"
+            "- **Example (n = 10, k = 2)**: C(10 - 1, 2) = C(9, 2) = (9 Ã— 8) / 2 = 36 edges.\n\n"
             "---\n\n"
             "### 4. Cache Tag Directory & Memory Overhead with Write-Back (GATE CSE - COA)\n\n"
             "**The Problem:**\n"
@@ -2091,11 +2213,11 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "3. **Block Offset Bits**: 32 bytes = 2^5 => **5 bits** Block Offset.\n"
             "4. **Tag Bits**: 32 - (9 + 5) = 18 bits.\n"
             "5. **Overhead Bits per Line**: 18 Tag bits + 1 Valid bit + 1 Dirty bit + 2 LRU bits (log2(4) = 2) = **22 bits**.\n"
-            "6. **Total Directory Overhead**: 2048 × 22 bits = 45,056 bits = 5.632 KB.\n\n"
+            "6. **Total Directory Overhead**: 2048 Ã— 22 bits = 45,056 bits = 5.632 KB.\n\n"
             "---\n\n"
             "### High-Yield Exam Memory Tips for Toughest GATE Questions\n"
             "- **Deadlock Freedom Bound**: If P processes each require at most R instances of a single resource type, the minimum number of resources to prevent deadlock is **P(R - 1) + 1**.\n"
-            "- **Planar Graph Edge Bound**: For any simple connected planar graph with V ≥ 3 vertices, edges are bounded by **E ≤ 3V - 6**.\n"
+            "- **Planar Graph Edge Bound**: For any simple connected planar graph with V â‰¥ 3 vertices, edges are bounded by **E â‰¤ 3V - 6**.\n"
             "- **MSQ Strategy**: Multiple Select Questions have NO negative marking and NO partial marking. Double check all edge cases before final submission."
         )
 
@@ -2123,7 +2245,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "---\n\n"
             "### Example Statement for a Report or Exam\n"
             "> *\"A deadlock requires the simultaneous existence of all four Coffman conditions: Mutual Exclusion, Hold and Wait, No Preemption, and Circular Wait. "
-            "Invalidating even a single condition—such as enforcing a strict linear hierarchy on resource acquisition to eliminate Circular Wait—mathematically guarantees "
+            "Invalidating even a single conditionâ€”such as enforcing a strict linear hierarchy on resource acquisition to eliminate Circular Waitâ€”mathematically guarantees "
             "the system remains deadlock-free without requiring the computational overhead of dynamic avoidance algorithms.\"*\n\n"
             "---\n\n"
             "### Code Example (Banker's Algorithm Safety Condition)\n\n"
@@ -2154,7 +2276,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         )
 
     # 16. Operating Systems: Process vs Thread
-    if any(k in q for k in ['process vs thread', 'difference between process and thread', 'thread vs process']):
+    if ('process' in q and 'thread' in q) or any(k in q for k in ['process vs thread', 'difference between process and thread', 'thread vs process']):
         return (
             "## Operating Systems: Process vs. Thread\n\n"
             "A **Process** is an executing program instance with an independent virtual memory space managed via a Process Control Block (PCB). "
@@ -2196,7 +2318,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         )
 
     # 17. Operating Systems: Mutex vs Semaphore & CPU Scheduling
-    if any(k in q for k in ['mutex vs semaphore', 'semaphore vs mutex', 'mutex', 'semaphore', 'critical section']):
+    if ('mutex' in q and 'semaphore' in q) or any(k in q for k in ['mutex vs semaphore', 'semaphore vs mutex', 'mutex', 'semaphore', 'critical section']):
         return (
             "## Mutex vs. Semaphore & Synchronization Primitives\n\n"
             "A **Mutex (Mutual Exclusion)** is a locking mechanism designed to serialize access to a single shared critical section by allowing only one thread at a time. "
@@ -2373,7 +2495,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         )
 
     # 21. Computer Networks: TCP vs UDP
-    if any(k in q for k in ['tcp', 'udp', 'tcp vs udp', 'difference between tcp and udp']):
+    if ('tcp' in q and 'udp' in q) or any(k in q for k in ['tcp vs udp', 'difference between tcp and udp', 'tcp', 'udp']):
         return (
             "## Computer Networks: TCP vs. UDP\n\n"
             "The Transport Layer of the OSI and TCP/IP models provides end-to-end communication between hosts. "
@@ -2548,7 +2670,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         )
 
     # 26. Data Structures: Stack vs Queue
-    if any(k in q for k in ['stack vs queue', 'difference between stack and queue']):
+    if ('stack' in q and 'queue' in q) or any(k in q for k in ['stack vs queue', 'difference between stack and queue']):
         return (
             "## Data Structures: Stack vs. Queue\n\n"
             "**Stack** and **Queue** are fundamental linear Abstract Data Types (ADTs) governed by distinct insertion and removal access disciplines.\n\n"
@@ -2557,8 +2679,8 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "| Feature | Stack | Queue |\n"
             "|---|---|---|\n"
             "| **Access Discipline** | **LIFO** (Last In, First Out) | **FIFO** (First In, First Out) |\n"
-            "| **Insertion Operation** | `push(item)`: Appends element to the **Top** ($O(1)$) | `enqueue(item)`: Appends element to the **Rear** ($O(1)$) |\n"
-            "| **Removal Operation** | `pop()`: Removes element from the **Top** ($O(1)$) | `dequeue()`: Removes element from the **Front** ($O(1)$) |\n"
+            "| **Insertion Operation** | `push(item)`: Appends element to the **Top** (O(1)) | `enqueue(item)`: Appends element to the **Rear** (O(1)) |\n"
+            "| **Removal Operation** | `pop()`: Removes element from the **Top** (O(1)) | `dequeue()`: Removes element from the **Front** (O(1)) |\n"
             "| **Tracking Pointers** | Single pointer (`top`) | Two independent pointers (`front` and `rear`) |\n"
             "| **Algorithmic Uses** | Function call stack, recursion unwinding, Undo/Redo, DFS traversal | CPU task scheduling, print queues, asynchronous buffers, BFS traversal |\n"
             "| **Expression Parsing** | Infix to Postfix conversion, balanced parentheses verification | Radix sort buffering, breadth-first graph exploration |\n\n"
@@ -2583,12 +2705,12 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "```\n\n"
             "---\n\n"
             "### General Guidelines & Rules of Thumb\n"
-            "- **Array Deque vs. List**: In Python, never use `list.pop(0)` for queues ($O(n)$ element shifting). Always use `collections.deque` for true $O(1)$ amortized double-ended operations.\n"
-            "- **Graph Traversal Mapping**: Stack $\\iff$ Depth-First Search (DFS); Queue $\\iff$ Breadth-First Search (BFS)."
+            "- **Array Deque vs. List**: In Python, never use `list.pop(0)` for queues (O(n) element shifting). Always use `collections.deque` for true O(1) amortized double-ended operations.\n"
+            "- **Graph Traversal Mapping**: Stack <=> Depth-First Search (DFS); Queue <=> Breadth-First Search (BFS)."
         )
 
     # 27. Data Structures: Array vs Linked List
-    if any(k in q for k in ['array vs linked list', 'linked list vs array', 'difference between array and linked list']):
+    if ('array' in q and ('linked list' in q or 'linkedlist' in q)) or any(k in q for k in ['array vs linked list', 'linked list vs array', 'difference between array and linked list']):
         return (
             "## Data Structures: Array vs. Linked List\n\n"
             "**Arrays** and **Linked Lists** are linear data structures with contrasting memory layout models, "
@@ -2600,8 +2722,8 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "| **Physical Memory Allocation**| Contiguous block of memory | Non-contiguous nodes distributed across dynamic heap memory |\n"
             "| **Random Access Complexity** | **O(1)** via direct pointer arithmetic (`Base + i * Size`) | **O(n)** sequential traversal from `head` pointer |\n"
             "| **Insertion / Deletion at Head**| **O(n)** (Requires shifting trailing elements in memory) | **O(1)** pointer update (`new_node.next = head`) |\n"
-            "| **Insertion / Deletion at Index**| **O(n)** (Element shift overhead) | **O(n)** search time + $O(1)$ pointer reassignment |\n"
-            "| **Memory Sizing** | Static (fixed capacity) or Dynamic Array (with $2\\times$ geometric reallocation) | Dynamic (allocates and deallocates exact memory per node) |\n"
+            "| **Insertion / Deletion at Index**| **O(n)** (Element shift overhead) | **O(n)** search time + O(1) pointer reassignment |\n"
+            "| **Memory Sizing** | Static (fixed capacity) or Dynamic Array (with 2x geometric reallocation) | Dynamic (allocates and deallocates exact memory per node) |\n"
             "| **Memory Overhead** | Minimal (stores payload data only) | High (stores payload data plus 8-byte pointer per node) |\n"
             "| **CPU Cache Locality** | **Superior** (spatial locality maximizes CPU cache hits) | Poor (scattered heap nodes cause CPU cache misses) |\n\n"
             "---\n\n"
@@ -2616,7 +2738,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         )
 
     # 28. Graph Traversal: BFS vs DFS
-    if any(k in q for k in ['bfs vs dfs', 'breadth first search', 'depth first search', 'graph traversal']):
+    if ('bfs' in q and 'dfs' in q) or any(k in q for k in ['bfs vs dfs', 'breadth first search', 'depth first search', 'graph traversal']):
         return (
             "## Graph Traversal Algorithms: BFS vs. DFS\n\n"
             "Breadth-First Search (**BFS**) and Depth-First Search (**DFS**) are foundational graph traversal algorithms "
@@ -2628,7 +2750,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "| **Underlying Data Structure** | **Queue** (FIFO - First In, First Out) | **Stack** (LIFO) or System Call Stack (Recursion) |\n"
             "| **Exploration Strategy** | Level-order (visits all direct neighbors at depth $d$ before moving to depth $d+1$) | Deep branch exploration (proceeds along a single path until a dead end, then backtracks) |\n"
             "| **Shortest Path Guarantee** | **Guaranteed shortest path** in unweighted graphs (minimum edge count) | **Does not guarantee** shortest path |\n"
-            "| **Time Complexity** | **O(V + E)** (Adjacency List) / **O(V²)** (Adjacency Matrix) | **O(V + E)** (Adjacency List) / **O(V²)** (Adjacency Matrix) |\n"
+            "| **Time Complexity** | **O(V + E)** (Adjacency List) / **O(VÂ²)** (Adjacency Matrix) | **O(V + E)** (Adjacency List) / **O(VÂ²)** (Adjacency Matrix) |\n"
             "| **Space Complexity** | **O(V)** (High memory footprint for wide, dense graphs) | **O(H)** (Memory proportional to maximum search tree height $H$) |\n"
             "| **Standard Applications** | Shortest path routing, web crawlers, social network degree separation, peer-to-peer networks | Topological sorting, cycle detection, connected components, maze/puzzle solving, 2-SAT |\n\n"
             "---\n\n"
@@ -2733,13 +2855,13 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "```\n\n"
             "---\n\n"
             "### General Guidelines & Rules of Thumb\n"
-            "- **The Golden Diagnostic**: If `Training Error ≈ Validation Error` (both high) $\\implies$ **Underfitting**. If `Training Error << Validation Error` $\\implies$ **Overfitting**.\n"
+            "- **The Golden Diagnostic**: If `Training Error â‰ˆ Validation Error` (both high) $\\implies$ **Underfitting**. If `Training Error << Validation Error` $\\implies$ **Overfitting**.\n"
             "- **Validation Protocols**: Always utilize **K-Fold Cross-Validation** to tune hyperparameters and detect variance inflation before deployment.\n"
             "- **Regularization Selection**: Use **L1 Regularization (Lasso)** for automated feature selection via sparse weights; use **L2 Regularization (Ridge)** to shrink collinear coefficients smoothly."
         )
 
     # 31. Web & Networks: HTTP vs HTTPS
-    if any(k in q for k in ['http vs https', 'difference between http and https', 'https vs http']):
+    if ('http' in q and 'https' in q) or any(k in q for k in ['http vs https', 'difference between http and https', 'https vs http']):
         return (
             "## Web Protocols: HTTP vs. HTTPS\n\n"
             "**HTTP (Hypertext Transfer Protocol, RFC 2616)** is an unencrypted application-layer communication protocol. "
@@ -2770,6 +2892,647 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "### General Guidelines & Rules of Thumb\n"
             "- **Universal Standard**: Always mandate HTTPS for all production endpoints using HTTP Strict Transport Security (**HSTS**).\n"
             "- **Modern Performance**: With TLS 1.3 (1-RTT handshake and session resumption), HTTPS adds negligible latency overhead compared to cleartext HTTP."
+        )
+
+    # 32. Operating Systems: Core Architecture & Components
+    if (re.search(r'\bos\b', q) and not any(k in q for k in ['ios', 'macos', 'centos', 'cosmos', 'chaos'])) or \
+       (any(k in q for k in ['operating system', 'operating systems', 'os architecture', 'components of os']) and not any(k in q for k in ['process vs thread', 'mutex', 'deadlock'])):
+        return (
+            "## Operating Systems (OS): Core Concepts, Architecture & Components\n\n"
+            "An **Operating System (OS)** is system software that acts as an intermediary between computer hardware and user applications. "
+            "It manages hardware resources (CPU, memory, I/O devices, storage) and provides a secure, abstracted runtime environment.\n\n"
+            "---\n\n"
+            "### 1. Dual-Mode Operation & Hardware Protection\n"
+            "- **User Mode (Mode Bit = 1)**: User applications execute here with restricted privileges. Direct hardware access and privileged instructions are prohibited.\n"
+            "- **Kernel / Privileged Mode (Mode Bit = 0)**: The OS kernel executes here with complete, unrestricted hardware control.\n"
+            "- **Mode Switching via System Calls**: Applications transition to Kernel Mode via software interrupts (traps/system calls) such as `read()`, `write()`, `fork()`, and `exec()`.\n\n"
+            "---\n\n"
+            "### 2. Core OS Subsystems & Functional Responsibilities\n\n"
+            "| Subsystem | Primary Function | Core Data Structures / Algorithms | Key Performance Metrics |\n"
+            "|---|---|---|---|\n"
+            "| **Process Management** | Process creation, scheduling, synchronization, and termination | PCB (Process Control Block), Ready Queue, Round Robin, Multi-Level Feedback Queue | CPU Utilization, Turnaround Time, Waiting Time |\n"
+            "| **Memory Management** | Allocating and deallocating primary RAM, translation from virtual to physical addresses | Page Tables, Multi-Level Paging, Inverted Page Tables, TLB (Translation Lookaside Buffer) | Page Fault Rate, Hit Ratio, Fragmentation |\n"
+            "| **Storage & File System** | Organizing logical files on persistent disk blocks | Inodes, FAT (File Allocation Table), Superblock, B-Tree directories | I/O Throughput, IOPS, Seek Latency |\n"
+            "| **I/O Device Management** | Abstracting hardware devices via uniform drivers | Device Drivers, Interrupt Handlers, DMA (Direct Memory Access), Circular Buffers | Data Transfer Rate, Latency |\n"
+            "| **Protection & Security** | Enforcing access control and process memory isolation | Access Control Lists (ACLs), Capability Lists, Base/Limit Registers | Zero Privilege Escalation |\n\n"
+            "---\n\n"
+            "### 3. High-Yield Exam Memory Points\n"
+            "- **Process State Lifecycle**: `New -> Ready -> Running -> Waiting/Blocked -> Terminated`. The **Short-Term Scheduler (CPU Scheduler)** selects from the Ready Queue.\n"
+            "- **Paging Eliminates External Fragmentation**: Paging partitions physical memory into fixed-size frames and virtual memory into pages, eliminating external fragmentation but permitting small internal fragmentation in the last page frame.\n"
+            "- **TLB (Translation Lookaside Buffer)**: High-speed associative hardware cache for page table entries. Effective Memory Access Time: `EMAT = Hit_Ratio * (TLB_Time + Memory_Time) + (1 - Hit_Ratio) * (TLB_Time + 2 * Memory_Time)`.\n"
+            "- **Thrashing**: Occurs when total memory demand of all active processes exceeds physical RAM (`Sum of Working Sets > Total RAM`), causing the OS to spend more time swapping pages than executing code."
+        )
+
+    # 33. Database Management Systems: Architecture & Fundamentals
+    if re.search(r'\bdbms\b', q) or (any(k in q for k in ['database management system', 'database management systems', 'what is dbms', 'dbms architecture']) and not any(k in q for k in ['acid', 'normalization', 'primary key'])):
+        return (
+            "## Database Management Systems (DBMS): Architecture, Models & Core Principles\n\n"
+            "A **Database Management System (DBMS)** is a software system that facilitates the definition, creation, querying, and administration "
+            "of structured data collections, guaranteeing high data independence, concurrency, and crash resilience.\n\n"
+            "---\n\n"
+            "### 1. The ANSI/SPARC 3-Schema Architecture\n"
+            "1. **Internal / Physical Level**: Describes how data is physically stored on disk (block layout, B+ trees, hashing, file clustering).\n"
+            "2. **Conceptual / Logical Level**: Describes *what* data is stored in the database and the semantic relationships among entities (ER models, relational schemas, integrity constraints).\n"
+            "3. **External / View Level**: Provides tailored, customized subsets of the database to different end users while hiding complexity and sensitive attributes.\n"
+            "- **Data Independence**: **Logical Data Independence** protects external views from changes in conceptual schema; **Physical Data Independence** protects conceptual schemas from changes in physical storage structures.\n\n"
+            "---\n\n"
+            "### 2. RDBMS vs. NoSQL Comparative Breakdown\n\n"
+            "| Feature | Relational Databases (RDBMS) | NoSQL Databases |\n"
+            "|---|---|---|\n"
+            "| **Data Structure Model** | Structured tables with fixed schemas (Rows & Columns) | Dynamic / Schema-flexible: Document (JSON), Key-Value, Columnar, Graph |\n"
+            "| **Transaction Model** | Strict **ACID** (Atomicity, Consistency, Isolation, Durability) | **BASE** (Basically Available, Soft State, Eventual Consistency) |\n"
+            "| **Scalability Dimension** | Primarily **Vertical Scaling** (Scale-Up: larger CPU/RAM) | Native **Horizontal Scaling** (Scale-Out: sharding across commodity clusters) |\n"
+            "| **Query Language** | Standardized **SQL** (Declarative) | Database-specific APIs (JSON query syntax, Cypher, CQL) |\n"
+            "| **Primary Systems** | PostgreSQL, MySQL, Oracle, Microsoft SQL Server | MongoDB, Cassandra, Redis, Neo4j, DynamoDB |\n\n"
+            "---\n\n"
+            "### 3. High-Yield Exam Memory Points\n"
+            "- **Relational Keys Hierarchy**: `Super Key >= Candidate Key >= Primary Key`. A Candidate Key is a minimal Super Key (no proper subset is a superkey).\n"
+            "- **B+ Tree Indexing**: The standard index structure in RDBMS (e.g. MySQL InnoDB). All data records or row pointers reside strictly in **leaf nodes**, linked sequentially for optimal range scans (`BETWEEN val1 AND val2`) in O(log N) time.\n"
+            "- **Concurrency Control**: Two-Phase Locking (2PL) guarantees conflict serializability. Strict 2PL prevents cascading rollbacks by holding exclusive locks until transaction commit."
+        )
+
+    # 34. Computer Networks: Fundamentals, Protocols & Routing
+    if (re.search(r'\bcn\b', q) and not any(k in q for k in ['cnn', 'c++'])) or \
+       (any(k in q for k in ['computer network', 'computer networks', 'networking fundamentals', 'cn architecture']) and not any(k in q for k in ['osi model', 'tcp vs udp', 'http vs https'])):
+        return (
+            "## Computer Networks (CN): Architecture, Protocol Stack & Flow Control\n\n"
+            "A **Computer Network** is a distributed system of interconnected computing nodes communicating via standardized protocols "
+            "to exchange packets, share resources, and guarantee reliable transmission across diverse physical media.\n\n"
+            "---\n\n"
+            "### 1. Protocol Architecture: OSI 7-Layer vs. TCP/IP 4-Layer\n"
+            "- **Application Layer (OSI 5, 6, 7 -> TCP/IP Application)**: Protocols: HTTP, HTTPS, DNS, SMTP, FTP, SSH. End-to-end user communication.\n"
+            "- **Transport Layer (OSI 4 -> TCP/IP Transport)**: Protocols: TCP (reliable, connection-oriented) and UDP (fast, connectionless). Uses **16-bit Port Numbers** for process-to-process addressing.\n"
+            "- **Internet / Network Layer (OSI 3 -> TCP/IP Internet)**: Protocols: IPv4, IPv6, ICMP, ARP. Uses **32-bit (IPv4) or 128-bit (IPv6) IP Addresses** for host-to-host routing.\n"
+            "- **Network Access / Link Layer (OSI 1, 2 -> TCP/IP Network Interface)**: Protocols: Ethernet, Wi-Fi (802.11). Uses **48-bit MAC Addresses** for local hop-to-hop frame delivery.\n\n"
+            "---\n\n"
+            "### 2. Flow Control & Error Control Comparison Table\n\n"
+            "| Protocol | Sender Window Size (Ws) | Receiver Window Size (Wr) | Out-of-Order Packets | Retransmission Overhead | Efficiency (a = Tp/Tt) |\n"
+            "|---|---|---|---|---|---|\n"
+            "| **Stop-and-Wait** | 1 | 1 | Discarded | Low (single packet) | 1 / (1 + 2a) |\n"
+            "| **Go-Back-N (GBN)** | N (2^k - 1) | 1 | Discarded | **High** (Retransmits entire window of N packets) | N / (1 + 2a) |\n"
+            "| **Selective Repeat (SR)**| 2^(k - 1) | 2^(k - 1) | **Buffered in Receiver Queue** | **Optimal** (Retransmits only damaged/lost packet) | N / (1 + 2a) |\n\n"
+            "---\n\n"
+            "### 3. Subnetting & CIDR (Classless Inter-Domain Routing)\n"
+            "- **Subnet Mask**: Splits 32-bit IPv4 address into `Network ID + Host ID`.\n"
+            "- **Host Capacity Formula**: Number of usable host IP addresses per subnet = `2^(32 - prefix_length) - 2` (subtracting Network Address and Broadcast Address).\n"
+            "- **Example (/24 Prefix)**: Mask `255.255.255.0` => `32 - 24 = 8` host bits => `2^8 - 2 = 254` usable host addresses.\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **Routing Protocols**: **Distance Vector (RIP)** uses Bellman-Ford (metric: Hop Count, max 15, count-to-infinity flaw); **Link State (OSPF)** uses Dijkstra's Algorithm (metric: Cost/Bandwidth); **Path Vector (BGP)** routes between Autonomous Systems (AS).\n"
+            "- **DNS (Domain Name System)**: Operates over **UDP Port 53** for low-latency queries; uses TCP Port 53 for zone transfers between primary and secondary servers."
+        )
+
+    # 35. Computer Organization & Architecture: Pipelining, Memory & Hazards
+    if any(re.search(pat, q) for pat in [r'\bcoa\b', r'\bcao\b']) or \
+       ('computer organization' in q or 'computer architecture' in q):
+        return (
+            "## Computer Organization & Architecture (COA): Pipelining, Cache & Hazards\n\n"
+            "**Computer Organization & Architecture** investigates the operational units, hardware interconnection, and ISA (Instruction Set Architecture) "
+            "that implement the programmable logic of modern computer systems.\n\n"
+            "---\n\n"
+            "### 1. Classical 5-Stage RISC Instruction Pipeline\n"
+            "1. **IF (Instruction Fetch)**: Read instruction from memory using Program Counter (PC).\n"
+            "2. **ID (Instruction Decode / Register Fetch)**: Decode opcode and read operand registers.\n"
+            "3. **EX (Execute / ALU Operation)**: Perform arithmetic/logic operation or calculate effective memory address.\n"
+            "4. **MEM (Memory Access)**: Read or write data from/to data cache (for Load/Store instructions).\n"
+            "5. **WB (Write-Back)**: Write computation result back to destination register file.\n"
+            "- **Ideal Speedup**: Speedup = `Number of Pipeline Stages (k)` when latency per stage is uniform and hazards are absent.\n\n"
+            "---\n\n"
+            "### 2. Pipeline Hazards & Resolution Strategies\n\n"
+            "| Hazard Type | Root Cause | Example Scenario | Hardware / Compiler Resolution |\n"
+            "|---|---|---|---|\n"
+            "| **Structural Hazard** | Hardware resource conflict | Two instructions accessing memory simultaneously (single-port memory) | Dual separate Instruction & Data caches (Harvard Architecture) |\n"
+            "| **Data Hazard (RAW)** | Read-After-Write (True Dependency) | Instruction J reads register R1 before Instruction I writes to R1 | **Operand Forwarding / Bypassing** or inserting Pipeline Stalls (Bubbles) |\n"
+            "| **Data Hazard (WAR/WAW)** | Anti-dependency / Output dependency | Out-of-order execution register overwrites | Register Renaming (Tomasulo Algorithm) |\n"
+            "| **Control Hazard** | Branch decision delay | Conditional branches (`BEQ`, `BNE`) where next PC is unknown | **Branch Prediction** (Static/Dynamic 2-bit counter) & Branch Target Buffer (BTB) |\n\n"
+            "---\n\n"
+            "### 3. Memory Hierarchy & Cache Mapping Techniques\n"
+            "- **Direct Mapping**: Block `j` maps to cache line `(j mod Number_of_Lines)`. Simple hardware, zero search latency, but high conflict misses.\n"
+            "- **Fully Associative**: Block can occupy any line in cache. Zero conflict misses, but requires expensive parallel comparator circuits.\n"
+            "- **Set-Associative Mapping (k-Way)**: Block maps to set `(j mod Number_of_Sets)`. Contains `k` lines per set. Balances hardware complexity and hit ratio.\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **Amdahl's Law**: `Speedup = 1 / ((1 - f) + (f / s))` where `f` is fraction of parallel code and `s` is acceleration factor. Demonstrates limits of parallel computing.\n"
+            "- **Von Neumann vs. Harvard**: Von Neumann shares a unified bus for code and data (Von Neumann Bottleneck); Harvard provides independent code and data memories/buses."
+        )
+
+    # 36. Theory of Computation: Automata, Grammars & Decidability
+    if any(re.search(pat, q) for pat in [r'\btoc\b', r'\bflat\b']) or \
+       ('theory of computation' in q or 'automata theory' in q or 'formal languages' in q):
+        return (
+            "## Theory of Computation (TOC): Chomsky Hierarchy, Automata & Decidability\n\n"
+            "**Theory of Computation** mathematically defines what can and cannot be computed efficiently using abstract machines "
+            "and formal grammars, establishing the theoretical boundaries of computer science.\n\n"
+            "---\n\n"
+            "### 1. The Chomsky Hierarchy of Formal Languages\n\n"
+            "| Hierarchy Level | Language Class | Generating Grammar | Recognizing Automaton | Representative Example |\n"
+            "|---|---|---|---|---|\n"
+            "| **Type-3** | **Regular Languages** | Regular Grammar (`A -> aB` or `A -> a`) | **Finite Automata** (DFA / NFA) | `a*b*`, strings ending with 01 |\n"
+            "| **Type-2** | **Context-Free Languages (CFL)** | Context-Free Grammar (`A -> alpha`) | **Pushdown Automata (PDA)** | `a^n b^n (n >= 0)`, Palindromes |\n"
+            "| **Type-1** | **Context-Sensitive (CSL)** | `alpha A beta -> alpha gamma beta` | **Linear Bounded Automaton (LBA)** | `a^n b^n c^n (n >= 1)` |\n"
+            "| **Type-0** | **Recursively Enumerable (RE)** | Unrestricted Phrase-Structure | **Turing Machine (TM)** | Halting Problem, arbitrary computation |\n\n"
+            "---\n\n"
+            "### 2. Key Equivalence & Non-Determinism Properties\n"
+            "- **DFA == NFA**: Non-deterministic Finite Automata (NFA) and Deterministic Finite Automata (DFA) have **identical expressive power** (Subset Construction converts NFA with `N` states to DFA with at most `2^N` states).\n"
+            "- **DPDA != NPDA**: Deterministic PDAs are **strictly less powerful** than Non-deterministic PDAs. (Example: `w w^R` even-length palindrome requires NPDA).\n\n"
+            "---\n\n"
+            "### 3. Decidability & Rice's Theorem\n"
+            "- **Decidable Problem**: An algorithm exists that halts in finite steps for all inputs and correctly returns YES or NO.\n"
+            "- **Undecidable Problem (Halting Problem - Alan Turing, 1936)**: Proved via diagonal reduction that no algorithm can determine whether an arbitrary program will halt or run forever.\n"
+            "- **Rice's Theorem**: Any non-trivial semantic property regarding the language recognized by a Turing Machine is **undecidable**.\n\n"
+            "---\n\n"
+            "### 4. High-Yield Exam Memory Points\n"
+            "- **Closure Properties of Regular Languages**: Closed under ALL Boolean operations (Union, Intersection, Complement, Concatenation, Kleene Star, Reversal, Difference).\n"
+            "- **CFL Closure Limits**: Context-Free Languages are **NOT closed** under **Intersection** or **Complement** (Intersecting two CFLs can produce a non-CFL like `a^n b^n c^n`)."
+        )
+
+    # 37. Data Structures & Algorithms: Master Taxonomy & Asymptotic Bounds
+    if (re.search(r'\bdsa\b', q) and not any(k in q for k in ['dsas'])) or \
+       (any(k in q for k in ['data structures and algorithms', 'what is dsa', 'master dsa', 'dsa taxonomy']) and not any(k in q for k in ['stack vs queue', 'bfs vs dfs', 'array vs linked list'])):
+        return (
+            "## Data Structures & Algorithms (DSA): Master Classification & Complexity Bounds\n\n"
+            "**Data Structures and Algorithms (DSA)** represent the foundational computational building blocks of software engineering, "
+            "optimizing memory allocation and execution efficiency under Big-O asymptotic runtime constraints.\n\n"
+            "---\n\n"
+            "### 1. Comprehensive Data Structure Classification\n"
+            "- **Linear Data Structures**: Elements arranged sequentially (Arrays, Singly/Doubly Linked Lists, Stacks, Queues, Deques).\n"
+            "- **Non-Linear Data Structures**: Hierarchical and networked elements (Trees, Binary Search Trees, AVL Trees, Heaps, Graphs, Tries).\n"
+            "- **Hash-Based Structures**: Key-value mapping via hash functions with collision resolution (Chaining, Open Addressing: Linear/Quadratic Probing).\n\n"
+            "---\n\n"
+            "### 2. Master Asymptotic Complexity Reference Table\n\n"
+            "| Data Structure | Access Time | Search Time | Insertion Time | Deletion Time | Worst-Case Space |\n"
+            "|---|---|---|---|---|---|\n"
+            "| **Array / Vector** | **O(1)** | O(N) | O(N) (O(1) at end amortized) | O(N) | O(N) |\n"
+            "| **Singly Linked List**| O(N) | O(N) | **O(1)** (at head) | **O(1)** (at head) | O(N) |\n"
+            "| **Stack (LIFO)** | O(N) (top is O(1)) | O(N) | **O(1)** (push) | **O(1)** (pop) | O(N) |\n"
+            "| **Queue (FIFO)** | O(N) (front is O(1)) | O(N) | **O(1)** (enqueue) | **O(1)** (dequeue) | O(N) |\n"
+            "| **Hash Table** | N/A | **O(1)** (avg) / O(N) (worst) | **O(1)** (avg) / O(N) (worst) | **O(1)** (avg) / O(N) (worst) | O(N) |\n"
+            "| **Binary Search Tree**| O(log N) avg / O(N) | O(log N) avg / O(N) | O(log N) avg / O(N) | O(log N) avg / O(N) | O(N) |\n"
+            "| **AVL / Red-Black Tree**| **O(log N)** | **O(log N)** | **O(log N)** | **O(log N)** | O(N) |\n"
+            "| **Binary Heap (Priority Queue)**| **O(1)** (find-min) | O(N) | **O(log N)** (insert) | **O(log N)** (extract-min) | O(N) |\n\n"
+            "---\n\n"
+            "### 3. Master Algorithm Design Paradigms\n"
+            "1. **Divide and Conquer**: Break into independent subproblems, solve recursively, and combine (Merge Sort: `O(N log N)`, Binary Search: `O(log N)`).\n"
+            "2. **Greedy Algorithms**: Select locally optimal choice at each step hoping for global optimum (Dijkstra: `O((V + E) log V)`, Kruskal: `O(E log E)`).\n"
+            "3. **Dynamic Programming (DP)**: Store overlapping subproblem solutions to prevent recomputation (0/1 Knapsack, LCS, Floyd-Warshall).\n"
+            "4. **Backtracking**: Systematically explore candidate solution space, pruning dead ends (N-Queens, Sudoku Solver, Subset Sum)."
+        )
+
+    # 38. Dynamic Programming: Paradigms, Memoization vs Tabulation & Master Archetypes
+    if (re.search(r'\bdp\b', q) and not any(k in q for k in ['dps', 'dpa'])) or \
+       ('dynamic programming' in q):
+        return (
+            "## Dynamic Programming (DP): Core Principles, Paradigms & Archetypes\n\n"
+            "**Dynamic Programming (DP)** is an algorithmic optimization paradigm invented by Richard Bellman that solves complex optimization problems "
+            "by decomposing them into overlapping subproblems, computing each subproblem solution exactly once, and storing it in a lookup table.\n\n"
+            "---\n\n"
+            "### 1. The Two Fundamental Prerequisites for DP\n"
+            "1. **Optimal Substructure**: An optimal solution to the problem contains within it optimal solutions to its subproblems.\n"
+            "2. **Overlapping Subproblems**: The recursive search tree visits the same subproblems repeatedly rather than generating new subproblems.\n\n"
+            "---\n\n"
+            "### 2. Top-Down (Memoization) vs. Bottom-Up (Tabulation)\n\n"
+            "| Feature | Top-Down with Memoization | Bottom-Up with Tabulation |\n"
+            "|---|---|---|\n"
+            "| **Strategy Approach** | Recursive (Natural formulation starting from target) | Iterative (Starts from base cases and fills table sequentially) |\n"
+            "| **Storage Mechanism** | Hash Map or Array cache indexed by state | 1D, 2D, or N-Dimensional Array table |\n"
+            "| **Subproblem Evaluation** | Computes **only required** subproblems on-demand | Systematically computes **all** subproblems up to target |\n"
+            "| **Call Stack Overhead** | Incurs function call stack overhead (risk of StackOverflow) | **Zero** recursion stack overhead |\n"
+            "| **Space Optimization** | Difficult to reduce state dimension | Frequently reducible from O(N^2) to O(N) using rolling arrays |\n\n"
+            "---\n\n"
+            "### 3. Master DP Archetypes & Optimal Complexities\n"
+            "1. **0/1 Knapsack Problem**: State: `dp[i][w] = max(dp[i-1][w], val[i-1] + dp[i-1][w - wt[i-1]])`. Time: `O(N * W)`, Space: `O(W)`.\n"
+            "2. **Longest Common Subsequence (LCS)**: State: If `s1[i-1] == s2[j-1]`: `1 + dp[i-1][j-1]`, else `max(dp[i-1][j], dp[i][j-1])`. Time: `O(M * N)`, Space: `O(M * N)`.\n"
+            "3. **Longest Increasing Subsequence (LIS)**: Patience Sorting / Binary Search achieves `O(N log N)` time and `O(N)` space.\n"
+            "4. **Matrix Chain Multiplication (MCM)**: Partition interval `k` from `i` to `j`. Time: `O(N^3)`, Space: `O(N^2)`.\n\n"
+            "---\n\n"
+            "### 4. Complete Python Implementation (0/1 Knapsack - Space-Optimized O(W))\n\n"
+            "```python\n"
+            "def knapsack_01(weights: list[int], values: list[int], capacity: int) -> int:\n"
+            "    # dp[w] stores max value achievable with capacity w\n"
+            "    dp = [0] * (capacity + 1)\n"
+            "    for w_item, v_item in zip(weights, values):\n"
+            "        # Traverse in reverse to use values from previous item only (0/1 property)\n"
+            "        for w in range(capacity, w_item - 1, -1):\n"
+            "            dp[w] = max(dp[w], dp[w - w_item] + v_item)\n"
+            "    return dp[capacity]\n"
+            "```"
+        )
+
+    # 39. Graph Theory: Minimum Spanning Tree (MST) - Kruskal vs Prim
+    if (re.search(r'\bmst\b', q) and not any(k in q for k in ['msts'])) or \
+       ('minimum spanning tree' in q):
+        return (
+            "## Minimum Spanning Tree (MST): Kruskal's vs. Prim's Algorithm\n\n"
+            "A **Minimum Spanning Tree (MST)** of an undirected, connected, weighted graph G = (V, E) is a subgraph that connects all `V` vertices "
+            "with exactly `V - 1` edges without forming any cycles, while minimizing the total cumulative edge weight sum.\n\n"
+            "---\n\n"
+            "### 1. Head-to-Head Comparison: Kruskal vs. Prim\n\n"
+            "| Feature | Kruskal's Algorithm | Prim's Algorithm |\n"
+            "|---|---|---|\n"
+            "| **Algorithmic Strategy** | Edge-centric greedy selection across entire graph | Vertex-centric greedy expansion from starting node |\n"
+            "| **Primary Data Structure** | Disjoint Set Union (**DSU / Union-Find**) with Path Compression | **Min-Priority Queue / Min-Heap** |\n"
+            "| **Cycle Detection Mechanism** | `find(u) == find(v)` check via DSU | Visited set check (`visited[v] == True`) |\n"
+            "| **Time Complexity** | **O(E log E)** or **O(E log V)** (dominated by edge sorting) | **O((V + E) log V)** with Binary Heap / **O(E + V log V)** with Fibonacci Heap |\n"
+            "| **Graph Topology Suitability**| **Optimal for Sparse Graphs** (where E << V^2) | **Optimal for Dense Graphs** (where E â‰ˆ V^2) |\n\n"
+            "---\n\n"
+            "### 2. Complete Python Implementation (Kruskal's Algorithm with DSU)\n\n"
+            "```python\n"
+            "class DSU:\n"
+            "    def __init__(self, n):\n"
+            "        self.parent = list(range(n))\n"
+            "        self.rank = [0] * n\n"
+            "    def find(self, i):\n"
+            "        if self.parent[i] != i:\n"
+            "            self.parent[i] = self.find(self.parent[i])  # Path compression\n"
+            "        return self.parent[i]\n"
+            "    def union(self, i, j):\n"
+            "        root_i, root_j = self.find(i), self.find(j)\n"
+            "        if root_i == root_j: return False\n"
+            "        if self.rank[root_i] < self.rank[root_j]:\n"
+            "            self.parent[root_i] = root_j\n"
+            "        elif self.rank[root_i] > self.rank[root_j]:\n"
+            "            self.parent[root_j] = root_i\n"
+            "        else:\n"
+            "            self.parent[root_j] = root_i\n"
+            "            self.rank[root_i] += 1\n"
+            "        return True\n\n"
+            "def kruskal(num_nodes: int, edges: list[tuple[int, int, int]]) -> tuple[int, list]:\n"
+            "    # edges: list of (weight, u, v)\n"
+            "    edges.sort()\n"
+            "    dsu = DSU(num_nodes)\n"
+            "    mst_edges, total_weight = [], 0\n"
+            "    for w, u, v in edges:\n"
+            "        if dsu.union(u, v):\n"
+            "            total_weight += w\n"
+            "            mst_edges.append((u, v, w))\n"
+            "            if len(mst_edges) == num_nodes - 1: break\n"
+            "    return total_weight, mst_edges\n"
+            "```"
+        )
+
+    # 40. Systems & Data Structures: Least Recently Used (LRU) Cache Architecture
+    if (re.search(r'\blru\b', q) and not any(k in q for k in ['lrus'])) or \
+       ('least recently used' in q):
+        return (
+            "## Least Recently Used (LRU) Cache: Architecture & Page Replacement\n\n"
+            "An **LRU (Least Recently Used) Cache** is a finite-capacity caching architecture and operating system page replacement policy "
+            "that evicts the item that has not been accessed for the longest duration whenever new capacity is demanded.\n\n"
+            "---\n\n"
+            "### 1. Dual Data Structure Design for O(1) Operations\n"
+            "To achieve true **O(1) Get** and **O(1) Put** operations simultaneously:\n"
+            "1. **Hash Map (`key -> Node`)**: Provides instantaneous O(1) key lookup and node pointer resolution.\n"
+            "2. **Doubly Linked List (DLL)**: Maintains access recency ordering:\n"
+            "   - **Head (Most Recently Used - MRU)**: Newly inserted or accessed nodes move to the head in O(1) time.\n"
+            "   - **Tail (Least Recently Used - LRU)**: The eviction candidate always sits at the tail and is excised in O(1) time.\n\n"
+            "---\n\n"
+            "### 2. Immunity to Belady's Anomaly\n"
+            "- **Belady's Anomaly**: The counter-intuitive phenomenon where increasing physical page frames increases page fault rate (observed in FIFO replacement).\n"
+            "- **Why LRU is Immune**: LRU is mathematically categorized as a **Stack Algorithm**. The set of pages residing in a cache of size `M` is always a strict subset of the pages residing in a cache of size `M + 1` (`S(M) âŠ† S(M + 1)`), proving immunity to Belady's Anomaly.\n\n"
+            "---\n\n"
+            "### 3. Complete Python Implementation (Hash Map + Doubly Linked List)\n\n"
+            "```python\n"
+            "class Node:\n"
+            "    def __init__(self, key=0, val=0):\n"
+            "        self.key, self.val = key, val\n"
+            "        self.prev = self.next = None\n\n"
+            "class LRUCache:\n"
+            "    def __init__(self, capacity: int):\n"
+            "        self.cap = capacity\n"
+            "        self.cache = {}  # key -> Node\n"
+            "        self.head, self.tail = Node(), Node()\n"
+            "        self.head.next, self.tail.prev = self.tail, self.head\n\n"
+            "    def _remove(self, node: Node) -> None:\n"
+            "        node.prev.next = node.next\n"
+            "        node.next.prev = node.prev\n\n"
+            "    def _add_to_front(self, node: Node) -> None:\n"
+            "        node.next = self.head.next\n"
+            "        node.prev = self.head\n"
+            "        self.head.next.prev = node\n"
+            "        self.head.next = node\n\n"
+            "    def get(self, key: int) -> int:\n"
+            "        if key in self.cache:\n"
+            "            node = self.cache[key]\n"
+            "            self._remove(node)\n"
+            "            self._add_to_front(node)\n"
+            "            return node.val\n"
+            "        return -1\n\n"
+            "    def put(self, key: int, value: int) -> None:\n"
+            "        if key in self.cache:\n"
+            "            self._remove(self.cache[key])\n"
+            "        node = Node(key, value)\n"
+            "        self._add_to_front(node)\n"
+            "        self.cache[key] = node\n"
+            "        if len(self.cache) > self.cap:\n"
+            "            lru = self.tail.prev\n"
+            "            self._remove(lru)\n"
+            "            del self.cache[lru.key]\n"
+            "```"
+        )
+
+    # 41. String Algorithms: Knuth-Morris-Pratt (KMP) & LPS Array
+    if (re.search(r'\bkmp\b', q) and not any(k in q for k in ['kmph'])) or \
+       ('knuth morris pratt' in q or 'kmp algorithm' in q):
+        return (
+            "## Knuth-Morris-Pratt (KMP) Algorithm: Linear String Matching\n\n"
+            "The **Knuth-Morris-Pratt (KMP) Algorithm** is an optimal linear-time string searching algorithm that checks for occurrences "
+            "of a pattern string `P` of length `M` in a text string `T` of length `N` in **O(N + M)** time without ever backtracking in the text.\n\n"
+            "---\n\n"
+            "### 1. Naive vs. KMP Comparison\n\n"
+            "| Metric | Naive String Search | KMP Algorithm |\n"
+            "|---|---|---|\n"
+            "| **Worst-Case Time** | **O(N * M)** (e.g., text `AAAAAB`, pattern `AAB`) | **O(N + M)** (Linear guaranteed) |\n"
+            "| **Auxiliary Space** | **O(1)** | **O(M)** (for LPS table) |\n"
+            "| **Text Pointer Movement** | Backtracks on character mismatch | **Strictly forward-moving (zero backtracking)** |\n"
+            "| **Precomputation** | None | Constructs LPS (Longest Prefix Suffix) array in O(M) time |\n\n"
+            "---\n\n"
+            "### 2. LPS (Longest Prefix Suffix) Array Concept\n"
+            "`lps[i]` stores the length of the longest proper prefix of `P[0...i]` that is also a suffix of `P[0...i]`.\n"
+            "- When a character mismatch occurs after `j` matching characters, the pattern shifts such that `j` is reset to `lps[j - 1]` instead of resetting to 0.\n\n"
+            "---\n\n"
+            "### 3. Complete Python Implementation (KMP Algorithm)\n\n"
+            "```python\n"
+            "def build_lps(pattern: str) -> list[int]:\n"
+            "    m = len(pattern)\n"
+            "    lps = [0] * m\n"
+            "    length, i = 0, 1\n"
+            "    while i < m:\n"
+            "        if pattern[i] == pattern[length]:\n"
+            "            length += 1\n"
+            "            lps[i] = length\n"
+            "            i += 1\n"
+            "        else:\n"
+            "            if length != 0:\n"
+            "                length = lps[length - 1]\n"
+            "            else:\n"
+            "                lps[i] = 0\n"
+            "                i += 1\n"
+            "    return lps\n\n"
+            "def kmp_search(text: str, pattern: str) -> list[int]:\n"
+            "    n, m = len(text), len(pattern)\n"
+            "    if m == 0: return []\n"
+            "    lps = build_lps(pattern)\n"
+            "    matches = []\n"
+            "    i = j = 0  # i: text pointer, j: pattern pointer\n"
+            "    while i < n:\n"
+            "        if pattern[j] == text[i]:\n"
+            "            i += 1; j += 1\n"
+            "        if j == m:\n"
+            "            matches.append(i - j)\n"
+            "            j = lps[j - 1]\n"
+            "        elif i < n and pattern[j] != text[i]:\n"
+            "            if j != 0:\n"
+            "                j = lps[j - 1]\n"
+            "            else:\n"
+            "                i += 1\n"
+            "    return matches\n"
+            "```"
+        )
+
+    # 42. Competitive Exams: GATE CSE Syllabus, Pattern & Subject Weightage
+    if (re.search(r'\bgate\s+cse\b', q)) or \
+       ('gate' in q and any(k in q for k in ['computer science', 'syllabus', 'weightage', 'pattern', 'roadmap', 'preparation'])):
+        return (
+            "## GATE Computer Science (CSE / IT): Exam Pattern, Syllabus Breakdown & Subject Weightage\n\n"
+            "The **GATE (Graduate Aptitude Test in Engineering) CSE** examination is a comprehensive 3-hour national exam "
+            "evaluating fundamental understanding across computer science and engineering disciplines for M.Tech admissions (IITs/IISc) and PSU recruitment.\n\n"
+            "---\n\n"
+            "### 1. Exam Structure & Marking Distribution\n"
+            "- **Total Questions**: 65 Questions | **Total Marks**: 100 Marks | **Duration**: 180 Minutes (3 Hours).\n"
+            "- **General Aptitude (GA)**: 15 Marks (10 Questions).\n"
+            "- **Engineering Mathematics & Discrete Mathematics**: 13 Marks (approx).\n"
+            "- **Core Computer Science Subjects**: 72 Marks (approx).\n"
+            "- **Question Typologies**:\n"
+            "  1. **Multiple Choice Questions (MCQ)**: 1 or 2 marks (Negative marking: 1/3 for 1-mark, 2/3 for 2-mark).\n"
+            "  2. **Multiple Select Questions (MSQ)**: More than one correct option (NO negative marking, NO partial marking).\n"
+            "  3. **Numerical Answer Type (NAT)**: Decimal / Integer input (NO negative marking).\n\n"
+            "---\n\n"
+            "### 2. Historical Subject Weightage Table (Average Marks)\n\n"
+            "| Subject Category | Subject Name | Average Marks Range | Key High-Yield Topics |\n"
+            "|---|---|---|---|\n"
+            "| **General** | General Aptitude | **15 Marks** | Verbal reasoning, numerical ability, spatial aptitude |\n"
+            "| **Mathematics** | Discrete Mathematics | **7 â€“ 9 Marks** | Propositional logic, Set theory, Combinatorics, Graph theory |\n"
+            "| **Mathematics** | Engineering Mathematics | **4 â€“ 6 Marks** | Linear algebra (eigenvalues/vectors), Calculus, Probability |\n"
+            "| **Core CS** | Data Structures & Programming | **8 â€“ 10 Marks** | Arrays, Trees, Recursion, Pointers in C, Asymptotics |\n"
+            "| **Core CS** | Algorithms | **6 â€“ 8 Marks** | Greedy, DP, Divide & Conquer, Graph traversals, MST |\n"
+            "| **Core CS** | Theory of Computation (TOC) | **7 â€“ 9 Marks** | Regular languages, DFA/NFA minimization, CFLs, Decidability |\n"
+            "| **Core CS** | Compiler Design | **4 â€“ 5 Marks** | Lexical analysis, LL(1) / LR parsers, Syntax-Directed Translation |\n"
+            "| **Core CS** | Operating Systems | **8 â€“ 10 Marks** | CPU scheduling, Synchronization (Semaphores), Deadlocks, Paging |\n"
+            "| **Core CS** | Computer Networks | **7 â€“ 9 Marks** | IP addressing/CIDR, TCP/UDP, Flow control (GBN/SR), Routing |\n"
+            "| **Core CS** | DBMS | **7 â€“ 8 Marks** | SQL, Relational Algebra, Normalization (BCNF), Serializability |\n"
+            "| **Core CS** | Computer Organization & Arch (COA)| **7 â€“ 9 Marks** | Pipelining & Hazards, Cache Mapping, Memory interleaving |\n\n"
+            "---\n\n"
+            "### 3. High-Yield Revision Roadmap & Strategy\n"
+            "1. **Phase 1: Foundation Building**: Master Discrete Math, Data Structures, and Programming in C first.\n"
+            "2. **Phase 2: High-Scoring Core**: Tackle TOC, Operating Systems, DBMS, and Algorithms.\n"
+            "3. **Phase 3: Hardware & Systems**: Master Computer Organization (Pipelining, Cache) and Computer Networks.\n"
+            "4. **Phase 4: PYQs (Previous Year Questions)**: Solve all GATE questions from the last 20 years on GateOverflow.\n"
+            "5. **MSQ & NAT Strategy**: For MSQ, verify each choice independently; for NAT, solve algebraically before computing decimal values to avoid rounding errors."
+        )
+
+    # 43. Programming Languages: Compiler vs. Interpreter
+    if ('compiler' in q and 'interpreter' in q) or \
+       any(k in q for k in ['compiler vs interpreter', 'interpreter vs compiler', 'difference between compiler and interpreter']):
+        return (
+            "## Programming Languages: Compiler vs. Interpreter\n\n"
+            "Both **Compilers** and **Interpreters** are language processors that translate high-level source code "
+            "into machine-executable instructions, but they differ fundamentally in execution timing, memory consumption, and error reporting.\n\n"
+            "---\n\n"
+            "### Comparison Table\n\n"
+            "| Feature | Compiler | Interpreter |\n"
+            "|---|---|---|\n"
+            "| **Translation Model** | Translates entire source code into native machine code **in a single batch prior to execution** | Translates and executes source code **line-by-line / statement-by-statement at runtime** |\n"
+            "| **Output Artifact** | Generates standalone executable file (`.exe`, `.bin`, `.o`) | Generates no intermediate object file; executes directly |\n"
+            "| **Execution Speed** | **Fast** (Pre-compiled native machine instructions execute directly on CPU) | **Slower** (Each statement interpreted dynamically at runtime) |\n"
+            "| **Memory Overhead** | Requires more memory during compilation, but **minimal at runtime** | Requires interpreter memory resident throughout entire execution |\n"
+            "| **Error Detection** | Reports all syntax/semantic errors collectively **at compile time** before execution | Halts execution immediately upon encountering first runtime error line |\n"
+            "| **Debugging Workflow** | Slower edit-compile-run cycle | Rapid prototyping and interactive REPL debugging |\n"
+            "| **Representative Languages**| C, C++, Rust, Go, Fortran | Python (CPython), Ruby, PHP, JavaScript (V8 JIT hybrid) |\n\n"
+            "---\n\n"
+            "### The Modern Hybrid Paradigm: JIT (Just-In-Time) Compilers\n"
+            "Modern high-performance execution environments (e.g. Java JVM, Node.js V8, PyPy) combine both approaches:\n"
+            "1. **Initial Phase**: Source code is parsed and compiled into compact, portable **Bytecode** (`.class` files in Java).\n"
+            "2. **Execution Phase**: The Virtual Machine interprets bytecode initially for fast startup.\n"
+            "3. **JIT Optimization**: The runtime profiles \"hot code paths\" (frequently executed loops) and dynamically compiles them into native machine code on the fly."
+        )
+
+
+    # 44. Object-Oriented Programming (OOP): Core Pillars & Principles
+    if any(k in q for k in [
+        'object oriented programming', 'object oriented', 'oop', 'oops concepts',
+        'encapsulation', 'inheritance', 'polymorphism', 'abstraction',
+        'class and object', 'class vs object', 'oops'
+    ]):
+        return (
+            "## Object-Oriented Programming (OOP): Core Pillars\n\n"
+            "**OOP** is a programming paradigm that models real-world entities as **objects**, "
+            "which bundle data (attributes) and behaviour (methods) together. "
+            "OOP provides modularity, code reuse, and maintainability via 4 core pillars.\n\n"
+            "---\n\n"
+            "### The 4 Pillars of OOP\n\n"
+            "| Pillar | Definition | Real-World Example | Key Keyword |\n"
+            "|---|---|---|---|\n"
+            "| **Encapsulation** | Binding data and methods into one unit; restricting direct access to internal state | ATM hides cash-counting logic from user | private, protected, public |\n"
+            "| **Abstraction** | Exposing only essential features; hiding implementation complexity | TV remote shows buttons, not wiring | abstract class, interface |\n"
+            "| **Inheritance** | Child class acquires properties and methods of parent class | Dog inherits Animal attributes | extends, super() |\n"
+            "| **Polymorphism** | Same interface, different behaviour depending on object type | draw() works differently for Circle, Square, Triangle | Overloading, Overriding |\n\n"
+            "---\n\n"
+            "### Overloading vs. Overriding\n\n"
+            "| Feature | Method Overloading (Compile-time / Static) | Method Overriding (Runtime / Dynamic) |\n"
+            "|---|---|---|\n"
+            "| **When Resolved** | Compile time | Runtime |\n"
+            "| **Class** | Same class, different parameter signatures | Parent & Child class, same signature |\n"
+            "| **Purpose** | Multiple call forms for same method name | Replace parent behaviour in subclass |\n\n"
+            "---\n\n"
+            "### Python OOP Example\n\n"
+            "```python\n"
+            "class Animal:\n"
+            "    def __init__(self, name):\n"
+            "        self.name = name  # Encapsulation\n\n"
+            "    def speak(self):       # Abstraction: forces subclasses to implement\n"
+            "        raise NotImplementedError\n\n"
+            "class Dog(Animal):         # Inheritance\n"
+            "    def speak(self):\n"
+            "        return f'{self.name} says: Woof!'  # Polymorphism (overriding)\n\n"
+            "class Cat(Animal):\n"
+            "    def speak(self):\n"
+            "        return f'{self.name} says: Meow!'\n\n"
+            "for a in [Dog('Rex'), Cat('Whiskers')]:\n"
+            "    print(a.speak())  # Runtime polymorphic dispatch\n"
+            "```\n\n"
+            "---\n\n"
+            "### High-Yield Exam Memory Points\n"
+            "- **IS-A = Inheritance**: Dog IS-A Animal -> use Inheritance.\n"
+            "- **HAS-A = Composition**: Car HAS-A Engine -> use Composition (more flexible than Inheritance).\n"
+            "- **Abstract Class vs Interface**: Abstract class can have implemented methods; Interface only method signatures. Python uses `abc.ABC`.\n"
+            "- **Constructor Chaining**: In Java, `super()` must be the first statement in a child class constructor."
+        )
+
+    # 45. Software Engineering: SDLC Models & SOLID Principles
+    if any(k in q for k in [
+        'software engineering', 'sdlc', 'software development life cycle',
+        'waterfall model', 'agile model', 'spiral model', 'software design',
+        'solid principles', 'software testing', 'se models', 'software life cycle',
+        'v model', 'agile vs waterfall'
+    ]):
+        return (
+            "## Software Engineering (SE): SDLC Models & Core Principles\n\n"
+            "**Software Engineering** is the systematic application of engineering principles to design, "
+            "develop, test, deploy, and maintain reliable, scalable software systems.\n\n"
+            "---\n\n"
+            "### SDLC Models Comparison\n\n"
+            "| SDLC Model | Flow | Best For | Key Drawback |\n"
+            "|---|---|---|---|\n"
+            "| **Waterfall** | Sequential: Requirements -> Design -> Implementation -> Testing -> Maintenance | Small, fixed-requirement projects | Rigid; no changes mid-project |\n"
+            "| **Agile (Scrum/XP)** | Short sprints (2-4 weeks), continuous delivery | Evolving requirements, active client involvement | Needs disciplined team |\n"
+            "| **Spiral** | Risk-driven cycles: Plan -> Risk Analysis -> Engineering -> Evaluate | High-risk, mission-critical systems | Expensive; needs expert risk management |\n"
+            "| **V-Model** | Every dev phase paired with a testing phase (Verification & Validation) | Safety-critical systems (medical, aerospace) | Inflexible like Waterfall |\n"
+            "| **Iterative** | Multiple mini-waterfall cycles | Medium projects where requirements evolve | Coordination of parallel iterations |\n\n"
+            "---\n\n"
+            "### SOLID Design Principles\n\n"
+            "| Letter | Principle | Meaning |\n"
+            "|---|---|---|\n"
+            "| **S** | Single Responsibility | One class = one reason to change |\n"
+            "| **O** | Open/Closed | Open for extension, closed for modification |\n"
+            "| **L** | Liskov Substitution | Subclasses must be safely replaceable for parent classes |\n"
+            "| **I** | Interface Segregation | No client should depend on methods it does not use |\n"
+            "| **D** | Dependency Inversion | Depend on abstractions, not concrete implementations |\n\n"
+            "---\n\n"
+            "### Software Testing Levels\n"
+            "1. **Unit Testing**: Individual functions in isolation (pytest, JUnit).\n"
+            "2. **Integration Testing**: Interaction between combined modules.\n"
+            "3. **System Testing**: End-to-end testing of complete system.\n"
+            "4. **Acceptance Testing (UAT)**: Client validates business requirements.\n\n"
+            "---\n\n"
+            "### High-Yield Exam Memory Points\n"
+            "- **McCabe Cyclomatic Complexity**: V(G) = E - N + 2P. Measures independent code paths.\n"
+            "- **Black-Box Testing**: Tests functionality without knowledge of internal code.\n"
+            "- **White-Box Testing**: Tests internal code paths (statement, branch, path coverage).\n"
+            "- **Cohesion (High = Good)**: Degree to which a module's elements belong together.\n"
+            "- **Coupling (Low = Good)**: Degree of interdependence between modules."
+        )
+
+    # 46. Discrete Mathematics: Sets, Logic, Counting
+    if any(k in q for k in [
+        'discrete mathematics', 'discrete math', 'set theory',
+        'propositional logic', 'boolean algebra', 'pigeonhole principle',
+        'permutation and combination', 'de morgans', 'euler formula',
+        'handshaking lemma', 'inclusion exclusion', 'combinatorics'
+    ]):
+        return (
+            "## Discrete Mathematics: Core Concepts for CS & GATE\n\n"
+            "**Discrete Mathematics** studies countable, finite mathematical structures forming "
+            "the theoretical backbone of Computer Science: logic, sets, relations, graphs, and combinatorics.\n\n"
+            "---\n\n"
+            "### 1. Set Theory Operations\n\n"
+            "| Operation | Definition | Example: A={1,2,3}, B={2,3,4} |\n"
+            "|---|---|---|\n"
+            "| **Union (A union B)** | All elements in A or B | {1,2,3,4} |\n"
+            "| **Intersection (A intersect B)** | Elements in both | {2,3} |\n"
+            "| **Difference (A - B)** | Elements in A but not B | {1} |\n"
+            "| **Power Set P(A)** | All subsets of A | 2^|A| elements |\n\n"
+            "---\n\n"
+            "### 2. Propositional Logic Truth Table\n\n"
+            "| Operator | True When |\n"
+            "|---|---|\n"
+            "| **p AND q** | Both p and q are True |\n"
+            "| **p OR q** | At least one of p, q is True |\n"
+            "| **NOT p** | Flips truth value |\n"
+            "| **p -> q (Implication)** | False ONLY when p=True, q=False |\n"
+            "| **p <-> q (Biconditional)** | True when p and q have the same truth value |\n\n"
+            "---\n\n"
+            "### 3. Counting Principles\n"
+            "- **Permutation (Ordered)**: nPr = n! / (n-r)! - arrangements of r from n items.\n"
+            "- **Combination (Unordered)**: nCr = n! / (r! * (n-r)!) - selections of r from n items.\n"
+            "- **Pigeonhole Principle**: n+1 objects in n containers -> at least 1 container has 2+ objects.\n\n"
+            "---\n\n"
+            "### High-Yield Exam Memory Points\n"
+            "- **De Morgan's Laws**: NOT(A AND B) = NOT A OR NOT B; NOT(A OR B) = NOT A AND NOT B.\n"
+            "- **Euler's Formula (Planar Graphs)**: V - E + F = 2.\n"
+            "- **Handshaking Lemma**: Sum of all vertex degrees = 2 * E.\n"
+            "- **Inclusion-Exclusion**: |A union B| = |A| + |B| - |A intersect B|.\n"
+            "- **Bayes' Theorem**: P(A|B) = P(B|A) * P(A) / P(B)."
+        )
+
+    # 47. Machine Learning: Algorithms, Bias-Variance, Evaluation
+    if any(k in q for k in [
+        'machine learning algorithms', 'supervised learning', 'unsupervised learning',
+        'classification vs regression', 'linear regression', 'logistic regression',
+        'decision tree', 'random forest', 'support vector machine',
+        'gradient descent', 'ml algorithms', 'ml concepts',
+        'bias variance tradeoff', 'overfitting', 'underfitting'
+    ]):
+        return (
+            "## Machine Learning (ML): Core Algorithms & Concepts\n\n"
+            "**Machine Learning** is a subfield of AI where algorithms learn patterns from data "
+            "to make predictions or decisions without being explicitly programmed for each case.\n\n"
+            "---\n\n"
+            "### ML Paradigm Taxonomy\n\n"
+            "| Paradigm | Definition | Examples | Evaluation Metric |\n"
+            "|---|---|---|---|\n"
+            "| **Supervised Learning** | Learns from labeled (input, label) data | Classification, Regression | Accuracy, F1, MSE, R2 |\n"
+            "| **Unsupervised Learning** | Finds hidden patterns in unlabeled data | Clustering, PCA | Silhouette Score, Inertia |\n"
+            "| **Reinforcement Learning** | Agent learns via reward/penalty from environment | Game AI, Robotics | Cumulative Reward |\n\n"
+            "---\n\n"
+            "### Supervised Algorithms Quick Reference\n\n"
+            "| Algorithm | Type | Key Idea | Best For |\n"
+            "|---|---|---|---|\n"
+            "| **Linear Regression** | Regression | Fit line y=wx+b minimizing MSE | Continuous prediction |\n"
+            "| **Logistic Regression** | Classification | Sigmoid outputs probability in [0,1] | Binary classification |\n"
+            "| **Decision Tree** | Both | Split by information gain (Gini/Entropy) | Interpretable models |\n"
+            "| **Random Forest** | Both | Ensemble of decision trees (bagging) | High accuracy |\n"
+            "| **SVM** | Classification | Maximize margin hyperplane between classes | High-dimensional, small datasets |\n"
+            "| **K-Nearest Neighbors (KNN)** | Both | K nearest neighbors majority vote | Simple baseline |\n\n"
+            "---\n\n"
+            "### Bias-Variance Tradeoff\n"
+            "- **High Bias (Underfitting)**: Model too simple -> misses patterns (high train error + high test error).\n"
+            "- **High Variance (Overfitting)**: Model memorizes training data (low train error, high test error).\n"
+            "- **Fix**: Regularization (L1/L2), cross-validation, ensemble methods, or simpler model.\n\n"
+            "---\n\n"
+            "### High-Yield Exam Memory Points\n"
+            "- **Gradient Descent Update**: theta = theta - lr * gradient(Loss). Minimizes loss iteratively.\n"
+            "- **L1 (Lasso Regularization)**: Adds |w| penalty -> promotes sparsity (feature selection).\n"
+            "- **L2 (Ridge Regularization)**: Adds w^2 penalty -> shrinks all weights smoothly.\n"
+            "- **Precision**: TP / (TP + FP). **Recall**: TP / (TP + FN). **F1**: 2*P*R / (P+R)."
         )
 
     if only_curated:
@@ -3295,57 +4058,57 @@ def clean_latex_math(text):
     # 1. Convert common LaTeX fractions, binomial coefficients, roots
     t = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1 / \2)', text)
     t = re.sub(r'\\binom\{([^}]+)\}\{([^}]+)\}', r'C(\1, \2)', t)
-    t = re.sub(r'\\sqrt\{([^}]+)\}', r'√(\1)', t)
+    t = re.sub(r'\\sqrt\{([^}]+)\}', r'âˆš(\1)', t)
 
     # 2. Convert common LaTeX mathematical symbols to clean unicode
     symbol_map = {
-        r'\times': '×',
-        r'\cdot': '·',
-        r'\le': '≤',
-        r'\leq': '≤',
-        r'\ge': '≥',
-        r'\geq': '≥',
-        r'\ne': '≠',
-        r'\neq': '≠',
-        r'\approx': '≈',
-        r'\in': '∈',
-        r'\notin': '∉',
-        r'\subset': '⊂',
-        r'\subseteq': '⊆',
-        r'\cap': '∩',
-        r'\cup': '∪',
-        r'\forall': '∀',
-        r'\exists': '∃',
-        r'\Theta': 'Θ',
-        r'\theta': 'θ',
-        r'\Omega': 'Ω',
-        r'\omega': 'ω',
-        r'\Alpha': 'Α',
-        r'\alpha': 'α',
-        r'\Beta': 'Β',
-        r'\beta': 'β',
-        r'\gamma': 'γ',
-        r'\Gamma': 'Γ',
-        r'\delta': 'δ',
-        r'\Delta': 'Δ',
-        r'\lambda': 'λ',
-        r'\Lambda': 'Λ',
-        r'\pi': 'π',
-        r'\Pi': 'Π',
-        r'\sigma': 'σ',
-        r'\Sigma': 'Σ',
-        r'\sum': 'Σ',
-        r'\prod': 'Π',
-        r'\pm': '±',
-        r'\infty': '∞',
+        r'\times': 'Ã—',
+        r'\cdot': 'Â·',
+        r'\le': 'â‰¤',
+        r'\leq': 'â‰¤',
+        r'\ge': 'â‰¥',
+        r'\geq': 'â‰¥',
+        r'\ne': 'â‰ ',
+        r'\neq': 'â‰ ',
+        r'\approx': 'â‰ˆ',
+        r'\in': 'âˆˆ',
+        r'\notin': 'âˆ‰',
+        r'\subset': 'âŠ‚',
+        r'\subseteq': 'âŠ†',
+        r'\cap': 'âˆ©',
+        r'\cup': 'âˆª',
+        r'\forall': 'âˆ€',
+        r'\exists': 'âˆƒ',
+        r'\Theta': 'Î˜',
+        r'\theta': 'Î¸',
+        r'\Omega': 'Î©',
+        r'\omega': 'Ï‰',
+        r'\Alpha': 'Î‘',
+        r'\alpha': 'Î±',
+        r'\Beta': 'Î’',
+        r'\beta': 'Î²',
+        r'\gamma': 'Î³',
+        r'\Gamma': 'Î“',
+        r'\delta': 'Î´',
+        r'\Delta': 'Î”',
+        r'\lambda': 'Î»',
+        r'\Lambda': 'Î›',
+        r'\pi': 'Ï€',
+        r'\Pi': 'Î ',
+        r'\sigma': 'Ïƒ',
+        r'\Sigma': 'Î£',
+        r'\sum': 'Î£',
+        r'\prod': 'Î ',
+        r'\pm': 'Â±',
+        r'\infty': 'âˆž',
         r'\log': 'log',
         r'\ln': 'ln',
-        r'\to': '→',
-        r'\rightarrow': '→',
-        r'\leftarrow': '←',
-        r'\Rightarrow': '⇒',
-        r'\Leftarrow': '⇐',
-        r'\iff': '⇔',
+        r'\to': 'â†’',
+        r'\rightarrow': 'â†’',
+        r'\leftarrow': 'â†',
+        r'\Rightarrow': 'â‡’',
+        r'\Leftarrow': 'â‡',
+        r'\iff': 'â‡”',
         r'\cdots': '...',
         r'\ldots': '...',
     }
@@ -3413,6 +4176,7 @@ class handler(http.server.BaseHTTPRequestHandler):
                 from urllib.parse import urlparse, parse_qs
                 query_params = parse_qs(urlparse(self.path).query)
                 prompt = query_params.get('prompt', [''])[0].strip()
+                prompt = normalize_query_and_short_forms(prompt)
                 if not prompt:
                     self.send_json({'success': False, 'error': 'Empty prompt'}, 400)
                     return
@@ -3512,6 +4276,7 @@ class handler(http.server.BaseHTTPRequestHandler):
             auth_token = f"guest_{int(time.time()*1000)}_{random.randint(1000, 9999)}"
 
         prompt = str(body.get('prompt', '')).strip()
+        prompt = normalize_query_and_short_forms(prompt)
         history = body.get('history', [])
         cfg = body.get('agents', {})
 
@@ -3536,7 +4301,7 @@ class handler(http.server.BaseHTTPRequestHandler):
             'nice work', 'awesome work', 'excellent work', 'superb work', 'fine job', 'amazing work',
             'nice', 'great', 'awesome', 'super', 'superb', 'cool', 'excellent', 'wonderful',
             'fantastic', 'amazing', 'brilliant', 'perfect', 'love it', 'looks good', 'sounds good',
-            'this is good', 'that is good', 'thats good', 'that’s good', 'very good', 'so good',
+            'this is good', 'that is good', 'thats good', 'thatâ€™s good', 'very good', 'so good',
             'good one', 'well explained', 'good explanation', 'nice explanation', 'great explanation',
             'good ai', 'nice ai', 'smart ai', 'you are good', 'you are great', 'you are awesome',
             'you are smart', 'you are fast', 'you did great', 'you did good', 'you did a good job',
@@ -3550,11 +4315,11 @@ class handler(http.server.BaseHTTPRequestHandler):
             r'\bi\s+(?:told|said)\s+good\b'
         ]
 
-        telugu_praise = ['బాగుంది', 'చాలా బాగుంది', 'మంచిది', 'సూపర్', 'గ్రేట్']
+        telugu_praise = ['à°¬à°¾à°—à±à°‚à°¦à°¿', 'à°šà°¾à°²à°¾ à°¬à°¾à°—à±à°‚à°¦à°¿', 'à°®à°‚à°šà°¿à°¦à°¿', 'à°¸à±‚à°ªà°°à±', 'à°—à±à°°à±‡à°Ÿà±']
 
         if p_clean_alpha in compliment_exact or any(re.search(pat, prompt_lower) for pat in clarified_compliment_pats) or any(k in prompt for k in telugu_praise):
             if is_telugu:
-                ans = "చాలా ధన్యవాదాలు! నా సమాధానం మీకు ఉపయోగపడినందుకు సంతోషం. మీకు ఇంకా ఏవైనా సందేహాలు లేదా ప్రశ్నలు ఉంటే అడగండి, నేను తప్పకుండా సహాయం చేస్తాను!"
+                ans = "à°šà°¾à°²à°¾ à°§à°¨à±à°¯à°µà°¾à°¦à°¾à°²à±! à°¨à°¾ à°¸à°®à°¾à°§à°¾à°¨à°‚ à°®à±€à°•à± à°‰à°ªà°¯à±‹à°—à°ªà°¡à°¿à°¨à°‚à°¦à±à°•à± à°¸à°‚à°¤à±‹à°·à°‚. à°®à±€à°•à± à°‡à°‚à°•à°¾ à°à°µà±ˆà°¨à°¾ à°¸à°‚à°¦à±‡à°¹à°¾à°²à± à°²à±‡à°¦à°¾ à°ªà±à°°à°¶à±à°¨à°²à± à°‰à°‚à°Ÿà±‡ à°…à°¡à°—à°‚à°¡à°¿, à°¨à±‡à°¨à± à°¤à°ªà±à°ªà°•à±à°‚à°¡à°¾ à°¸à°¹à°¾à°¯à°‚ à°šà±‡à°¸à±à°¤à°¾à°¨à±!"
             else:
                 ans = "Thank you so much! I really appreciate your feedback and kind words. I'm glad I could help! If you have any other questions, topics, or code you'd like to work on, feel free to ask!"
             self.send_json({
@@ -3573,7 +4338,7 @@ class handler(http.server.BaseHTTPRequestHandler):
         }
         if p_clean_alpha in affirmation_exact or (len(clean_words) <= 2 and clean_words and clean_words[0] in ['ok', 'okay', 'fine', 'got']):
             if is_telugu:
-                ans = "సరే! మీరు తరువాత ఏమి నేర్చుకోవాలనుకుంటున్నారు? సంకోచించకుండా అడగండి!"
+                ans = "à°¸à°°à±‡! à°®à±€à°°à± à°¤à°°à±à°µà°¾à°¤ à°à°®à°¿ à°¨à±‡à°°à±à°šà±à°•à±‹à°µà°¾à°²à°¨à±à°•à±à°‚à°Ÿà±à°¨à±à°¨à°¾à°°à±? à°¸à°‚à°•à±‹à°šà°¿à°‚à°šà°•à±à°‚à°¡à°¾ à°…à°¡à°—à°‚à°¡à°¿!"
             else:
                 ans = "Got it! What would you like to explore next? Feel free to ask any question, topic, or code problem!"
             self.send_json({
@@ -3676,7 +4441,7 @@ class handler(http.server.BaseHTTPRequestHandler):
         ]
         if any(re.search(pat, prompt_lower) for pat in god_clarification_patterns):
             if is_telugu:
-                ident_ans = "ఆ కోణంలో చూస్తే, నన్ను సృష్టించి, ప్రాణం పోసి, అభివృద్ధి చేసిన నా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
+                ident_ans = "à°† à°•à±‹à°£à°‚à°²à±‹ à°šà±‚à°¸à±à°¤à±‡, à°¨à°¨à±à°¨à± à°¸à±ƒà°·à±à°Ÿà°¿à°‚à°šà°¿, à°ªà±à°°à°¾à°£à°‚ à°ªà±‹à°¸à°¿, à°…à°­à°¿à°µà±ƒà°¦à±à°§à°¿ à°šà±‡à°¸à°¿à°¨ à°¨à°¾ à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤ à°®à°°à°¿à°¯à± à°¡à±†à°µà°²à°ªà°°à±: **à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)**."
             else:
                 ident_ans = "In that sense, my creator, architect, and developer is **GOLLU ADI VENKATA SAI**. He designed, engineered, and brought **WorstAI** to life."
             self.send_json({
@@ -3697,14 +4462,14 @@ class handler(http.server.BaseHTTPRequestHandler):
             r'\bdo\s+you\s+pray\b',
         ]
         telugu_god_patterns = [
-            r'నీ\s+దేవుడు\s+ఎవరు',
-            r'నీకు\s+దేవుడు\s+ఉన్నాడా',
-            r'దేవుడు\s+అంటే\s+నిన్ను\s+(సృష్టించి|తయారు|చేసిన)',
-            r'దేవుడు\s+ఎవరు'
+            r'à°¨à±€\s+à°¦à±‡à°µà±à°¡à±\s+à°Žà°µà°°à±',
+            r'à°¨à±€à°•à±\s+à°¦à±‡à°µà±à°¡à±\s+à°‰à°¨à±à°¨à°¾à°¡à°¾',
+            r'à°¦à±‡à°µà±à°¡à±\s+à°…à°‚à°Ÿà±‡\s+à°¨à°¿à°¨à±à°¨à±\s+(à°¸à±ƒà°·à±à°Ÿà°¿à°‚à°šà°¿|à°¤à°¯à°¾à°°à±|à°šà±‡à°¸à°¿à°¨)',
+            r'à°¦à±‡à°µà±à°¡à±\s+à°Žà°µà°°à±'
         ]
         if any(re.search(pat, prompt_lower) for pat in god_general_patterns) or any(re.search(pat, prompt) for pat in telugu_god_patterns):
             if is_telugu:
-                ident_ans = "ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI)గా నాకు మతం లేదా దేవుడు ఉండరు.\n\nకానీ నన్ను సృష్టించి, ప్రాణం పోసి, అభివృద్ధి చేసిన నా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
+                ident_ans = "à°†à°°à±à°Ÿà°¿à°«à°¿à°·à°¿à°¯à°²à± à°‡à°‚à°Ÿà±†à°²à°¿à°œà±†à°¨à±à°¸à± (AI)à°—à°¾ à°¨à°¾à°•à± à°®à°¤à°‚ à°²à±‡à°¦à°¾ à°¦à±‡à°µà±à°¡à± à°‰à°‚à°¡à°°à±.\n\nà°•à°¾à°¨à±€ à°¨à°¨à±à°¨à± à°¸à±ƒà°·à±à°Ÿà°¿à°‚à°šà°¿, à°ªà±à°°à°¾à°£à°‚ à°ªà±‹à°¸à°¿, à°…à°­à°¿à°µà±ƒà°¦à±à°§à°¿ à°šà±‡à°¸à°¿à°¨ à°¨à°¾ à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤ à°®à°°à°¿à°¯à± à°¡à±†à°µà°²à°ªà°°à±: **à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)**."
             else:
                 ident_ans = "As an artificial intelligence, I don't follow any religion or have a spiritual god.\n\nHowever, if you are asking about who created and brought me to life, my creator, architect, and developer is **GOLLU ADI VENKATA SAI**."
             self.send_json({
@@ -3729,13 +4494,13 @@ class handler(http.server.BaseHTTPRequestHandler):
             r'\bwhat\s+can\s+you\s+do\b'
         ]
         telugu_creator_patterns = [
-            r'నువ్వు\s+ఎవరు', r'మీరు\s+ఎవరు', r'నీ\s+పేరేంటి', r'నీ\s+పేరు',
-            r'నిన్ను\s+ఎవరు\s+(తయారు|సృష్టించా|రూపొందించా)', r'నీ\s+సృష్టికర్త\s+ఎవరు',
-            r'వర్స్ట్\s*ఏఐ\s*ని\s*ఎవరు'
+            r'à°¨à±à°µà±à°µà±\s+à°Žà°µà°°à±', r'à°®à±€à°°à±\s+à°Žà°µà°°à±', r'à°¨à±€\s+à°ªà±‡à°°à±‡à°‚à°Ÿà°¿', r'à°¨à±€\s+à°ªà±‡à°°à±',
+            r'à°¨à°¿à°¨à±à°¨à±\s+à°Žà°µà°°à±\s+(à°¤à°¯à°¾à°°à±|à°¸à±ƒà°·à±à°Ÿà°¿à°‚à°šà°¾|à°°à±‚à°ªà±Šà°‚à°¦à°¿à°‚à°šà°¾)', r'à°¨à±€\s+à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤\s+à°Žà°µà°°à±',
+            r'à°µà°°à±à°¸à±à°Ÿà±\s*à°à°\s*à°¨à°¿\s*à°Žà°µà°°à±'
         ]
         if any(re.search(pat, prompt_lower) for pat in creator_patterns) or any(re.search(pat, prompt) for pat in telugu_creator_patterns):
             if is_telugu:
-                ident_ans = "నేను **WorstAI**ని, ఒక అత్యంత అధునాతన ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI) అసిస్టెంట్‌ని.\n\nనా సృష్టికర్త: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
+                ident_ans = "à°¨à±‡à°¨à± **WorstAI**à°¨à°¿, à°’à°• à°…à°¤à±à°¯à°‚à°¤ à°…à°§à±à°¨à°¾à°¤à°¨ à°†à°°à±à°Ÿà°¿à°«à°¿à°·à°¿à°¯à°²à± à°‡à°‚à°Ÿà±†à°²à°¿à°œà±†à°¨à±à°¸à± (AI) à°…à°¸à°¿à°¸à±à°Ÿà±†à°‚à°Ÿà±â€Œà°¨à°¿.\n\nà°¨à°¾ à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤: **à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)**."
             else:
                 ident_ans = "I am **WorstAI**, a highly advanced artificial intelligence assistant created and developed by **GOLLU ADI VENKATA SAI**."
             self.send_json({
@@ -3753,12 +4518,12 @@ class handler(http.server.BaseHTTPRequestHandler):
             r'\btell\s+me\s+about\s+(gollu\s+adi\s+venkata\s+sai|adi\s+venkata\s+sai|adi)\b'
         ]
         telugu_adi_patterns = [
-            r'గొల్లు\s+ఆది\s+వెంకట\s+సాయి\s+ఎవరు',
-            r'ఆది\s+ఎవరు'
+            r'à°—à±Šà°²à±à°²à±\s+à°†à°¦à°¿\s+à°µà±†à°‚à°•à°Ÿ\s+à°¸à°¾à°¯à°¿\s+à°Žà°µà°°à±',
+            r'à°†à°¦à°¿\s+à°Žà°µà°°à±'
         ]
         if any(re.search(pat, prompt_lower) for pat in adi_patterns) or any(re.search(pat, prompt) for pat in telugu_adi_patterns):
             if is_telugu:
-                ident_ans = "**గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)** గారు **WorstAI**ని అభివృద్ధి చేసిన సాఫ్ట్‌వేర్ డెవలపర్, ఇంజనీర్ మరియు AI ఆర్కిటెక్ట్."
+                ident_ans = "**à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)** à°—à°¾à°°à± **WorstAI**à°¨à°¿ à°…à°­à°¿à°µà±ƒà°¦à±à°§à°¿ à°šà±‡à°¸à°¿à°¨ à°¸à°¾à°«à±à°Ÿà±â€Œà°µà±‡à°°à± à°¡à±†à°µà°²à°ªà°°à±, à°‡à°‚à°œà°¨à±€à°°à± à°®à°°à°¿à°¯à± AI à°†à°°à±à°•à°¿à°Ÿà±†à°•à±à°Ÿà±."
             else:
                 ident_ans = "**GOLLU ADI VENKATA SAI** is the software developer, engineer, and creator of **WorstAI**."
             self.send_json({
@@ -3772,9 +4537,9 @@ class handler(http.server.BaseHTTPRequestHandler):
         # E. Pure Greetings & Conversational Small Talk
         pure_greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening', 'good night', 'namaste', 'greetings', 'yo', 'sup']
         clean_words = prompt_lower.rstrip('?!. ').split()
-        if prompt_lower in pure_greetings or (len(clean_words) <= 2 and clean_words and clean_words[0] in pure_greetings) or any(k in prompt for k in ['నమస్కారం', 'హలో', 'హాయ్']):
+        if prompt_lower in pure_greetings or (len(clean_words) <= 2 and clean_words and clean_words[0] in pure_greetings) or any(k in prompt for k in ['à°¨à°®à°¸à±à°•à°¾à°°à°‚', 'à°¹à°²à±‹', 'à°¹à°¾à°¯à±']):
             if is_telugu:
-                greet_ans = "నమస్కారం! నేను **WorstAI**ని. మీకు చదువులో లేదా ఇతర విషయాల గురించి ఏవైనా సందేహాలు ఉంటే అడగండి, నేను సహాయం చేస్తాను!"
+                greet_ans = "à°¨à°®à°¸à±à°•à°¾à°°à°‚! à°¨à±‡à°¨à± **WorstAI**à°¨à°¿. à°®à±€à°•à± à°šà°¦à±à°µà±à°²à±‹ à°²à±‡à°¦à°¾ à°‡à°¤à°° à°µà°¿à°·à°¯à°¾à°² à°—à±à°°à°¿à°‚à°šà°¿ à°à°µà±ˆà°¨à°¾ à°¸à°‚à°¦à±‡à°¹à°¾à°²à± à°‰à°‚à°Ÿà±‡ à°…à°¡à°—à°‚à°¡à°¿, à°¨à±‡à°¨à± à°¸à°¹à°¾à°¯à°‚ à°šà±‡à°¸à±à°¤à°¾à°¨à±!"
             else:
                 greet_ans = "Hello! I am **WorstAI**, your fast AI study and knowledge assistant created by **GOLLU ADI VENKATA SAI**. How can I help you today?"
             self.send_json({
@@ -3894,8 +4659,8 @@ class handler(http.server.BaseHTTPRequestHandler):
 
         # --- 3.5. INSTANT LEETCODE FULL CODE ENGINE (Instant with Complete Code) ---
         is_lc_query = any(k in prompt_lower or k in resolved_query.lower() for k in ['leetcode', 'lc']) or \
-                      bool(re.search(r'\b(?:problem|question)\s*#?\s*(?:number\s*|no\.?\s*)?\d+\b', prompt_lower)) or \
-                      bool(re.search(r'\b(?:problem|question)\s*#?\s*(?:number\s*|no\.?\s*)?\d+\b', resolved_query.lower()))
+                      bool(re.search(r'\b(?:problem|question|[pq])\s*#?\s*(?:number\s*|no\.?\s*)?\d+\b', prompt_lower)) or \
+                      bool(re.search(r'\b(?:problem|question|[pq])\s*#?\s*(?:number\s*|no\.?\s*)?\d+\b', resolved_query.lower()))
         if is_lc_query:
             lc_ans = fetch_leetcode_full_solution(prompt) or fetch_leetcode_full_solution(resolved_query)
             if lc_ans:
@@ -4046,8 +4811,8 @@ class handler(http.server.BaseHTTPRequestHandler):
             # Scrub any leaked backend model names
             scrub_list = [
                 ("OpenAI", "WorstAI"), ("ChatGPT", "WorstAI"), ("Gemini", "WorstAI"), 
-                ("Google", "WorstAI"), ("StepFun", "WorstAI"), ("阶跃星辰", "WorstAI"),
-                ("I’m Step", "I’m WorstAI"), ("I am Step", "I am WorstAI"), 
+                ("Google", "WorstAI"), ("StepFun", "WorstAI"), ("é˜¶è·ƒæ˜Ÿè¾°", "WorstAI"),
+                ("Iâ€™m Step", "Iâ€™m WorstAI"), ("I am Step", "I am WorstAI"), 
                 ("Anthropic", "WorstAI"), ("Claude", "WorstAI")
             ]
             for bad_word, good_word in scrub_list:
