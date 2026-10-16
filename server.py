@@ -307,6 +307,26 @@ class SwarmHandler(http.server.SimpleHTTPRequestHandler):
                 })
                 return
             
+            # Instant Academic Curriculum Engine (<0.001s, 0 network wait)
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "api"))
+                from index import synthesize_academic_response, normalize_query_and_short_forms
+                norm_prompt = normalize_query_and_short_forms(prompt)
+                instant_acad = synthesize_academic_response(norm_prompt, only_curated=True)
+                if instant_acad:
+                    session_data["messages"].append({"role": "user", "content": original_prompt, "agents": []})
+                    session_data["messages"].append({"role": "ai", "content": instant_acad, "agents": ["WorstAI-Instant-Curriculum"]})
+                    save_sessions()
+                    self.send_json({
+                        "success": True,
+                        "answer": instant_acad,
+                        "research": None,
+                        "agents_used": ["WorstAI-Instant-Curriculum"]
+                    })
+                    return
+            except Exception:
+                pass
+            
             # 1. Perform Web Research if requested
             research_context = None
             if use_research:
