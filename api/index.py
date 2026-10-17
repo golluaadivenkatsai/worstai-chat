@@ -5083,8 +5083,8 @@ def clean_latex_math(text):
 
     # 2. Convert common LaTeX mathematical symbols to clean unicode
     symbol_map = {
-        r'times': 'Ã—',
-        r'·': 'Â·',
+        r'\times': '×',
+        r'\cdot': '·',
         r'<=': 'â‰¤',
         r'\leq': 'â‰¤',
         r'>=': 'â‰¥',
