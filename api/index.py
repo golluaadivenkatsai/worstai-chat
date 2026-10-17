@@ -4394,65 +4394,35 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "- **Spiral Model Quadrants**: 1. Determine Objectives -> 2. Identify & Resolve Risks -> 3. Development & Testing -> 4. Plan Next Phase."
         )
 
-    # 67. CMA Examination (Certified Management Accountant / Cost and Management Accountant)
+    # 67. CMA Examination (Cost & Management Accountant / Certified Management Accountant)
     if any(re.search(pat, q) for pat in [r'\bcma\b', r'\bicmai\b', r'\bcost and management accountant\b', r'\bcertified management accountant\b']) or any(k in q for k in [
         'cma exam', 'cma examination', 'cma exam dates', 'cma schedule', 'when was the cma', 'when is the cma',
         'cma foundation', 'cma inter', 'cma final', 'icmai exam', 'ima cma', 'cma timetable', 'present cma'
     ]):
+        is_date_q = any(k in q for k in ['when was', 'when is', 'date', 'dates', 'schedule', 'timetable', 'timing', 'when', 'time'])
+        if is_date_q:
+            return (
+                "### CMA Exam Dates & Schedule\n\n"
+                "**1. Upcoming Session (December Term):**\n"
+                "- **Intermediate & Final**: **December 10 to December 17**\n"
+                "- **Foundation**: **December 13**\n\n"
+                "**2. Past Session (June Term):**\n"
+                "- Held from **June 11 to June 18** (Inter & Final) and mid-June for Foundation.\n\n"
+                "**3. US CMA (IMA):**\n"
+                "- Conducted 3 times a year in testing windows: **January/February**, **May/June**, and **September/October**.\n\n"
+                "Official Website: `https://icmai.in`"
+            )
         return (
-            "## CMA Examination (Cost & Management Accountant / Certified Management Accountant)\n\n"
             "### 1. Definition\n"
-            "The **CMA Examination** is a professional certification program that qualifies candidates as certified management "
-            "and cost accountants, specializing in corporate budgeting, financial analysis, costing systems, and strategic management.\n\n"
-            "---\n\n"
-            "### 2. Types of CMA Examinations\n\n"
-            "| Program | Governing Body | Jurisdiction & Recognition | Structure & Stages |\n"
-            "|---|---|---|---|\n"
-            "| **Indian CMA (ICMAI)** | Institute of Cost Accountants of India | Statutory national body in India (recognized globally) | **3 Levels**: Foundation, Intermediate (Group I & II), Final (Group III & IV) |\n"
-            "| **US CMA (IMA)** | Institute of Management Accountants (USA) | International (recognized in 150+ countries) | **2 Parts**: Part 1 (Financial Planning & Analytics) & Part 2 (Strategic Financial Management) |\n"
-            "| **CMA (AAMA)** | American Association of Medical Assistants | United States healthcare sector | Clinical & administrative medical assisting certification |\n\n"
-            "---\n\n"
-            "### 3. Exam Schedule & Official Dates (Present & Past Terms)\n\n"
-            "#### A. Indian CMA (ICMAI Official Present Schedule)\n\n"
-            "**1. PRESENT / UPCOMING TERM: December Examination**\n"
-            "- **CMA Intermediate & Final Courses (Descriptive Offline Pen-and-Paper)**:\n"
-            "  - **Dates**: **December 10 to December 17**\n"
-            "  - **Final Timings**: **10:00 AM – 1:00 PM** (Morning Session)\n"
-            "  - **Intermediate Timings**: **2:00 PM – 5:00 PM** (Afternoon Session)\n"
-            "  - **Subject-Wise Timetable**:\n"
-            "    - **Dec 10**: Paper 5 (Inter: Business Laws & Ethics) / Paper 13 (Final: Corporate & Economic Laws)\n"
-            "    - **Dec 11**: Paper 9 (Inter: Operations Mgmt & Strategic Mgmt) / Paper 17 (Final: Cost & Management Audit)\n"
-            "    - **Dec 12**: Paper 6 (Inter: Financial Accounting) / Paper 14 (Final: Strategic Financial Management)\n"
-            "    - **Dec 13**: Paper 10 (Inter: Corporate Accounting & Auditing) / Paper 18 (Final: Corporate Financial Reporting)\n"
-            "    - **Dec 14**: Paper 7 (Inter: Direct & Indirect Taxation) / Paper 19 (Final: SPM & Business Valuation)\n"
-            "    - **Dec 15**: Paper 11 (Inter: Financial Mgmt & Business Data Analytics) / Paper 20 (Final: Electives)\n"
-            "    - **Dec 16**: Paper 8 (Inter: Cost Accounting)\n"
-            "    - **Dec 17**: Paper 12 (Inter: Management Accounting)\n"
-            "- **CMA Foundation Course (OMR Center-Based)**:\n"
-            "  - **Date**: **December 13 (Sunday)**\n"
-            "  - **Morning Session (10:00 AM – 12:00 Noon)**: Paper 1 (Business Laws) & Paper 2 (Financial & Cost Accounting)\n"
-            "  - **Afternoon Session (2:00 PM – 4:00 PM)**: Paper 3 (Business Math & Statistics) & Paper 4 (Business Economics & Management)\n\n"
-            "**2. RECENT PAST TERM: June Examination (When it was held earlier)**\n"
-            "- **Intermediate & Final**: Conducted from **June 11 to June 18**.\n"
-            "- **Foundation**: Conducted on a single Sunday in mid-June.\n\n"
-            "**3. Registration Cut-off Dates**:\n"
-            "- For **December Term**: Registration closes on **July 31**.\n"
-            "- For **June Term**: Registration closes on **January 31**.\n"
-            "- Official Notification Portal: `https://icmai.in` (Directorate of Examination).\n\n"
-            "#### B. US CMA (IMA Official Present Schedule)\n"
-            "- The US CMA exam is computerized and administered globally via **Prometric testing centers** across **three testing windows each year**:\n"
-            "  1. **January / February Testing Window**\n"
-            "  2. **May / June Testing Window**\n"
-            "  3. **September / October Testing Window**\n"
-            "- Candidates can choose their specific exam date and time slot within any of these windows.\n\n"
-            "---\n\n"
-            "### 4. Real-World Practical Example & Career Roles\n"
-            "- **Corporate Role**: At companies like Apple, Amazon, Tata, or Reliance, a CMA calculates the precise production cost per unit, "
-            "designs pricing models, audits cost ledgers, prepares quarterly financial forecasts, and prevents corporate financial waste.\n\n"
-            "---\n\n"
-            "### 5. High-Yield Exam Memory Tip\n"
-            "- **ICMAI Passing Benchmark**: A candidate must secure at least **40% marks in each individual subject** and an overall aggregate of **50% marks across all subjects in a group** to pass.\n"
-            "- **US CMA Passing Score**: Both Part 1 and Part 2 are scored on a scaled range from **0 to 500**; the minimum passing score is **360**."
+            "The **CMA (Cost and Management Accountant)** examination is a professional qualification in financial budgeting, costing systems, and business management.\n\n"
+            "### 2. Types of CMA\n"
+            "- **Indian CMA (ICMAI)**: 3 levels (Foundation, Intermediate, Final).\n"
+            "- **US CMA (IMA)**: 2 parts (Financial Planning & Analytics, Strategic Financial Management).\n\n"
+            "### 3. Key Roles\n"
+            "- Managing production costs, budgets, and corporate financial planning.\n"
+            "- Helping companies set profitable prices and reduce financial waste.\n\n"
+            "### 4. Simple Real-World Example\n"
+            "At a company like Tata or Apple, a CMA calculates the exact cost to manufacture one product to set the right selling price."
         )
 
     # 68. CA & CS Examinations (Chartered Accountant - ICAI / Company Secretary - ICSI)
@@ -4461,54 +4431,44 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         'when is cs exam', 'when was cs exam', 'cs exam dates', 'cs executive', 'cs professional', 'cseet'
     ]):
         is_cs = 'cs' in q or 'icsi' in q or 'company secretary' in q
+        is_date_q = any(k in q for k in ['when was', 'when is', 'date', 'dates', 'schedule', 'timetable', 'timing', 'when', 'time'])
         if is_cs:
+            if is_date_q:
+                return (
+                    "### CS Exam Dates (ICSI Official Schedule)\n\n"
+                    "- **Upcoming December Session**: **December 21 to December 30**\n"
+                    "- **June Session**: **June 1 to June 10**\n"
+                    "- **CSEET Entrance**: Held 4 times a year in **January, May, July, and November**.\n\n"
+                    "Official Website: `https://icsi.edu`"
+                )
             return (
-                "## CS Examination (Company Secretary - ICSI)\n\n"
                 "### 1. Definition\n"
-                "The **CS Examination** is the statutory professional qualification conducted by the **Institute of Company Secretaries of India (ICSI)** "
-                "to qualify corporate governance professionals, compliance officers, and legal advisors for listed and private enterprises.\n\n"
-                "---\n\n"
-                "### 2. Types of Stages in CS\n\n"
-                "| Level | Examination Name | Eligibility | Frequency & Format |\n"
-                "|---|---|---|---|\n"
-                "| **Level 1** | **CSEET** (CS Executive Entrance Test) | 10+2 / Graduates | Held **4 times a year** (January, May, July, November) in remote computer-based format |\n"
-                "| **Level 2** | **CS Executive** (Group 1 & 2) | Passed CSEET | Held **twice a year** (June & December cycles) |\n"
-                "| **Level 3** | **CS Professional** (Group 1 & 2) | Passed Executive | Held **twice a year** (June & December cycles) |\n\n"
-                "---\n\n"
-                "### 3. Exam Schedule & Dates (When Held)\n"
-                "- **June Session**: Annually conducted between **June 1 and June 10** across India and overseas centers.\n"
-                "- **December Session**: Annually conducted between **December 21 and December 30**.\n\n"
-                "---\n\n"
-                "### 4. Real-World Practical Example & Corporate Role\n"
-                "- A qualified CS handles corporate board meetings, advises the Board of Directors on the Companies Act 2013, files SEBI regulatory filings, and oversees mergers and acquisitions.\n\n"
-                "---\n\n"
-                "### 5. High-Yield Exam Memory Tip\n"
-                "- **Passing Criteria**: Minimum **40% marks in each individual paper** and **50% aggregate marks across all papers of a module**."
+                "The **CS (Company Secretary)** examination is a professional course by ICSI for corporate governance, legal compliance, and regulatory advisory.\n\n"
+                "### 2. Types of Stages\n"
+                "- **CSEET**: Entry-level entrance test.\n"
+                "- **Executive**: Intermediate stage (Group 1 & 2).\n"
+                "- **Professional**: Final stage (Group 1 & 2).\n\n"
+                "### 3. Key Role & Example\n"
+                "A CS ensures companies follow corporate laws, files compliance reports to SEBI, and advises the Board of Directors."
             )
         else:
+            if is_date_q:
+                return (
+                    "### CA Exam Dates (ICAI Official Schedule)\n\n"
+                    "- **CA Foundation**: Held 3 times a year in **January, June, and September**.\n"
+                    "- **CA Intermediate**: Held 3 times a year in **January, May, and September**.\n"
+                    "- **CA Final**: Held twice a year in **May and November**.\n\n"
+                    "Official Website: `https://icai.org`"
+                )
             return (
-                "## CA Examination (Chartered Accountant - ICAI)\n\n"
                 "### 1. Definition\n"
-                "The **CA Examination** is the premier accounting and auditing professional examination conducted by the **Institute of Chartered Accountants of India (ICAI)**, "
-                "authorizing successful candidates to practice statutory audit, taxation, financial planning, and forensic accounting.\n\n"
-                "---\n\n"
-                "### 2. Types of Levels in CA\n\n"
-                "| Level | Eligibility | Frequency | Papers & Structure |\n"
-                "|---|---|---|---|\n"
-                "| **CA Foundation** | After Class 12 | **3 times a year** (January, June, September) | 4 Papers (Accounting, Law, Quantitative Aptitude, Economics) |\n"
-                "| **CA Intermediate** | Passed Foundation / Direct Entry | **3 times a year** (January, May, September) | 6 Papers divided into Group 1 & Group 2 |\n"
-                "| **CA Final** | Passed Inter + Articleship | **Twice a year** (May & November) | 6 Advanced Papers (Financial Reporting, Advanced Auditing, Tax Laws) |\n\n"
-                "---\n\n"
-                "### 3. Exam Schedule & Key Dates\n"
-                "- **Foundation**: Held in **January, June, and September** (typically starting 15th-20th of the month).\n"
-                "- **Intermediate**: Held in **January, May, and September** (typically 3rd to 17th of the month).\n"
-                "- **Final**: Held in **May and November** (typically 1st to 15th of the month).\n\n"
-                "---\n\n"
-                "### 4. Real-World Practical Example & Corporate Role\n"
-                "- Statutory signing authority: Only a qualified ICAI Chartered Accountant can legally sign and certify corporate balance sheets, audit reports, and tax compliance certificates under the Indian Companies Act.\n\n"
-                "---\n\n"
-                "### 5. High-Yield Exam Memory Tip\n"
-                "- **Passing Benchmark**: Minimum **40% marks in each paper** and **50% aggregate across all papers of a group**."
+                "The **CA (Chartered Accountant)** examination is the premier accounting and statutory auditing qualification conducted by ICAI in India.\n\n"
+                "### 2. Types of Levels\n"
+                "- **Foundation**: Entry stage after Class 12.\n"
+                "- **Intermediate**: 6 papers across Group 1 & Group 2.\n"
+                "- **Final**: Advanced stage with practical articleship training.\n\n"
+                "### 3. Key Role & Example\n"
+                "Only a licensed CA has the legal power in India to sign and verify company balance sheets, audits, and tax filings."
             )
 
     if only_curated:
@@ -5684,7 +5644,9 @@ class handler(http.server.BaseHTTPRequestHandler):
         city = user_loc.get('city') or self.headers.get('x-vercel-ip-city', '')
         region = user_loc.get('region') or self.headers.get('x-vercel-ip-country-region', '')
         country = user_loc.get('country') or self.headers.get('x-vercel-ip-country', '')
-        tz_name = user_loc.get('timezone') or self.headers.get('x-vercel-ip-timezone', 'Asia/Kolkata')
+        # Ignore unverified Kolkata guesses from timezone
+        if user_loc.get('source') != 'gps' and city in ['Kolkata', 'Calcutta']:
+            city = ''
         loc_parts = [p for p in [city, region, country] if p]
         location_display = ", ".join(loc_parts) if loc_parts else "India"
 
@@ -5702,9 +5664,13 @@ class handler(http.server.BaseHTTPRequestHandler):
 
         # --- 2. LIVE TIME & LOCATION INQUIRIES (Instant 0.0001s) ---
         if any(k in prompt_lower for k in ["where am i", "my location", "what is my location", "my city", "which city"]):
+            if city:
+                ans_text = f"You are currently located in **{location_display}**.\n\nCurrent local time: **{now}**."
+            else:
+                ans_text = f"Your current region is **{location_display}**.\n\n*(Tip: To pinpoint your exact city, please allow GPS location access in your browser by tapping the location icon at the top).* \n\nCurrent local time: **{now}**."
             self.send_json({
                 'success': True,
-                'answer': f"You are currently located in **{location_display}**.\n\nCurrent local time: **{now}**.",
+                'answer': ans_text,
                 'thinking': '',
                 'agents_used': [f"Geo-Location ({location_display})"]
             })
@@ -5713,9 +5679,9 @@ class handler(http.server.BaseHTTPRequestHandler):
         if any(k in prompt_lower for k in ["what time", "current time", "time now", "what is the time"]):
             self.send_json({
                 'success': True,
-                'answer': f"The current live time in **{location_display}** is **{now}**.",
+                'answer': f"The current live time is **{now}**.",
                 'thinking': '',
-                'agents_used': [f"Geo-Location ({location_display})"]
+                'agents_used': ["Live Clock"]
             })
             return
 
@@ -5805,7 +5771,8 @@ class handler(http.server.BaseHTTPRequestHandler):
             prompt = re.sub(r'\b(?:\d[ -]*?){13,16}\b', '[REDACTED CC]', prompt)
         if cfg.get('security', True):
             agents_used.append('Security Auditor')
-        if city or location_display != "India":
+        is_loc_q = any(k in prompt_lower for k in ["where am i", "my location", "what is my location", "my city", "which city", "weather"])
+        if is_loc_q and (city or location_display):
             agents_used.append(f"Geo-Location ({city or location_display})")
 
         # Multi-Agent Web Research & Algorithm Specialists

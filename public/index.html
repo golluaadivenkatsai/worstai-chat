@@ -2681,57 +2681,87 @@
       updateLiveClock();
       setInterval(updateLiveClock, 30000);
 
-      const tz = userLocation.timezone;
-      let approxCity = tz.includes('/') ? tz.split('/')[1].replace(/_/g, ' ') : tz;
       const textEl = document.getElementById('loc-display-text');
-      if (textEl) textEl.innerText = `📍 ${approxCity}`;
+      if (textEl && !userLocation.city) textEl.innerText = "📍 India";
 
+      // Try reading location from IP without guessing city from timezone
       try {
-        const res = await fetch('https://ipwho.is/');
+        const res = await fetch('https://ipapi.co/json/');
         const data = await res.json();
-        if (data && data.success !== false) {
-          userLocation.city = data.city || '';
+        if (data && data.city && !data.error) {
+          userLocation.city = data.city;
           userLocation.region = data.region || '';
-          userLocation.country = data.country || '';
-          if (data.timezone && data.timezone.id) {
-            userLocation.timezone = data.timezone.id;
-          }
-          const display = [userLocation.city, userLocation.country].filter(Boolean).join(', ');
-          if (textEl) textEl.innerText = `📍 ${display || approxCity}`;
+          userLocation.country = data.country_name || 'India';
+          if (data.timezone) userLocation.timezone = data.timezone;
+          if (textEl) textEl.innerText = `📍 ${userLocation.city}`;
         }
-      } catch (err) {}
+      } catch (err) {
+        if (textEl && !userLocation.city) textEl.innerText = "📍 India";
+      }
+
+      // Auto-check if GPS permission was already granted
+      if (navigator.permissions && navigator.permissions.query) {
+        navigator.permissions.query({ name: 'geolocation' }).then(result => {
+          if (result.state === 'granted') {
+            requestPreciseLocation(true);
+          }
+        }).catch(() => {});
+      }
       updateLiveClock();
     }
 
-    function requestPreciseLocation() {
+    function requestPreciseLocation(silent = false) {
       const textEl = document.getElementById('loc-display-text');
       if (!navigator.geolocation) {
-        detectLocation();
+        if (textEl) textEl.innerText = userLocation.city ? `📍 ${userLocation.city}` : "📍 India";
         return;
       }
-      if (textEl) textEl.innerText = "📍 Pinpointing GPS...";
+      if (!silent && textEl) textEl.innerText = "📍 Locating GPS...";
 
       navigator.geolocation.getCurrentPosition(async (pos) => {
         userLocation.latitude = pos.coords.latitude;
         userLocation.longitude = pos.coords.longitude;
         userLocation.source = 'gps';
+
+        let resolvedCity = '';
+        let resolvedCountry = '';
+
+        // 1. Try BigDataCloud Client-side Geocoding (Accurate, fast, free, no rate limits)
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
-          const data = await res.json();
-          if (data && data.address) {
-            userLocation.city = data.address.city || data.address.town || data.address.village || data.address.suburb || '';
-            userLocation.region = data.address.state || '';
-            userLocation.country = data.address.country || '';
-            const display = [userLocation.city, userLocation.country].filter(Boolean).join(', ');
-            if (textEl) textEl.innerText = `📍 ${display}`;
+          const bdcRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&localityLanguage=en`);
+          const bdcData = await bdcRes.json();
+          if (bdcData) {
+            resolvedCity = bdcData.locality || bdcData.city || bdcData.principalSubdivision || '';
+            resolvedCountry = bdcData.countryName || 'India';
+            userLocation.region = bdcData.principalSubdivision || '';
           }
-        } catch (e) {
-          if (textEl) textEl.innerText = `📍 GPS Active`;
+        } catch (e) {}
+
+        // 2. Fallback to Nominatim if needed
+        if (!resolvedCity) {
+          try {
+            const nomRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+            const nomData = await nomRes.json();
+            if (nomData && nomData.address) {
+              resolvedCity = nomData.address.city || nomData.address.town || nomData.address.village || nomData.address.suburb || '';
+              resolvedCountry = nomData.address.country || 'India';
+            }
+          } catch (e) {}
+        }
+
+        if (resolvedCity) {
+          userLocation.city = resolvedCity;
+          userLocation.country = resolvedCountry || 'India';
+          if (textEl) textEl.innerText = `📍 ${resolvedCity}`;
+        } else {
+          if (textEl) textEl.innerText = "📍 GPS Active";
         }
         updateLiveClock();
       }, (err) => {
-        detectLocation();
-      }, { timeout: 8000, enableHighAccuracy: true });
+        if (!silent && textEl) {
+          textEl.innerText = userLocation.city ? `📍 ${userLocation.city}` : "📍 India";
+        }
+      }, { timeout: 10000, enableHighAccuracy: true });
     }
 
     detectLocation();
