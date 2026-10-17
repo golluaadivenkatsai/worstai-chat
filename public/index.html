@@ -1302,10 +1302,6 @@
         Continue with Google
       </button>
 
-      <!-- INSTANT GUEST ACCESS (NO AUTH LOCKOUT) -->
-      <button class="auth-btn btn-guest" onclick="continueAsGuest()" type="button" style="margin-top: 10px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #93c5fd; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease;">
-        <span style="font-size: 16px;">⚡</span> Continue as Guest (Instant Access)
-      </button>
 
       <div class="auth-divider">or continue with email</div>
 
@@ -1866,44 +1862,12 @@
           }
         }
       } else {
-        // High-Concurrency Support: check if user is operating in guest mode
-        if (localStorage.getItem('worstai_guest_mode') === 'true') {
-          authScreen.style.display = 'none';
-          if (userEmailDisplay) {
-            userEmailDisplay.innerText = 'Guest Student';
-            userAvatar.innerText = '👤';
-          }
-          const signOutBtn = document.querySelector('.sign-out-btn');
-          if (signOutBtn) {
-            signOutBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Sign In';
-            signOutBtn.onclick = () => { authScreen.style.display = 'flex'; };
-          }
-        } else {
-          authScreen.style.display = 'flex';
-          clearTimeout(inactivityTimer);
-          clearInterval(inactivityCheckInterval);
-        }
+        localStorage.removeItem('worstai_guest_mode');
+        authScreen.style.display = 'flex';
+        clearTimeout(inactivityTimer);
+        clearInterval(inactivityCheckInterval);
       }
     });
-
-    function continueAsGuest() {
-      localStorage.setItem('worstai_guest_mode', 'true');
-      let guestId = localStorage.getItem('worstai_guest_id');
-      if (!guestId) {
-        guestId = 'guest_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
-        localStorage.setItem('worstai_guest_id', guestId);
-      }
-      authScreen.style.display = 'none';
-      if (userEmailDisplay) {
-        userEmailDisplay.innerText = 'Guest Student';
-        userAvatar.innerText = '👤';
-      }
-      const signOutBtn = document.querySelector('.sign-out-btn');
-      if (signOutBtn) {
-        signOutBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Sign In';
-        signOutBtn.onclick = () => { authScreen.style.display = 'flex'; };
-      }
-    }
 
     // 1. Passwordless Email Link / OTP Sign-In
     async function sendLoginEmailLink() {
@@ -1970,11 +1934,9 @@
                 <strong>To Fix Google Sign-In (Firebase Admin):</strong><br/>
                 1. Open <a href="https://console.firebase.google.com" target="_blank" style="color: #60a5fa; text-decoration: underline;">Firebase Console</a> &gt; <em>Authentication</em> &gt; <em>Settings</em><br/>
                 2. Under <strong>Authorized domains</strong>, click <em>Add domain</em><br/>
-                3. Add <code>${currentHost}</code> and click Save.
+                3. Add <code>${currentHost}</code> and click Save.<br/>
+                <em>Or sign in with email and password below.</em>
               </div>
-              <button onclick="continueAsGuest()" type="button" style="width: 100%; margin-top: 6px; padding: 10px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                <span>⚡</span> Continue as Guest Now (No Login Required)
-              </button>
             </div>
           `, true);
         } else {
@@ -2450,8 +2412,10 @@
 
     let lastInputWasVoice = false;
     async function sendMessage() {
-      if (!auth.currentUser && !localStorage.getItem('worstai_guest_mode')) {
-        localStorage.setItem('worstai_guest_mode', 'true');
+      if (!auth.currentUser) {
+        authScreen.style.display = 'flex';
+        showAuthError("Please sign in to chat with WorstAI.");
+        return;
       }
       
       const prompt = inputField.value.trim();
