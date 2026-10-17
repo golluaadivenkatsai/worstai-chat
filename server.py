@@ -307,11 +307,51 @@ class SwarmHandler(http.server.SimpleHTTPRequestHandler):
                 })
                 return
             
+            # Resolve follow-up queries using session history
+            resolved_query = prompt
+            p_clean = prompt.lower().strip()
+            follow_up_phrases = [
+                'what is this', 'what is that', 'what does this mean', 'explain this', 'tell me more', 
+                'why', 'elaborate', 'what is it', 'give the code', 'give code', 'code', 'show code',
+                'python', 'in python', 'java', 'in java', 'cpp', 'c++', 'javascript', 'solution',
+                'give solution', 'solve it', 'provide solution', 'how to solve', 'write code',
+                'continue', 'next', 'more details', 'help me with this',
+                'search and tell me', 'search and tell', 'search it', 'search', 'search this',
+                'tell me', 'tell me now', 'tell the answer', 'tell answer', 'find it', 'find out',
+                'find and tell', 'find and tell me', 'check and tell', 'check and tell me',
+                'check it', 'give answer', 'give me answer', 'what is the answer', 'answer it',
+                'answer me', 'please search', 'search info', 'search online'
+            ]
+            is_follow_up = any(fp == p_clean or p_clean.startswith(fp + ' ') or p_clean.endswith(' ' + fp) for fp in follow_up_phrases)
+            if is_follow_up and session_data.get("messages"):
+                last_topic = ''
+                for msg in reversed(session_data["messages"]):
+                    if msg.get('role') == 'user' and len(msg.get('content', '')) > 2:
+                        cand = msg.get('content', '').strip()
+                        cand_clean = cand.lower().strip()
+                        if not any(fp == cand_clean for fp in follow_up_phrases):
+                            last_topic = cand
+                            break
+                if last_topic:
+                    search_imperatives = [
+                        'search and tell me', 'search and tell', 'search it', 'search', 'search this',
+                        'tell me', 'tell me now', 'tell the answer', 'tell answer', 'find it', 'find out',
+                        'find and tell', 'find and tell me', 'check and tell', 'check and tell me',
+                        'check it', 'give answer', 'give me answer', 'what is the answer', 'answer it',
+                        'answer me', 'please search', 'search info', 'search online'
+                    ]
+                    if any(p_clean == si or p_clean.startswith(si + ' ') for si in search_imperatives):
+                        resolved_query = last_topic
+                    elif any(k in p_clean for k in ['code', 'python', 'java', 'c++', 'cpp', 'javascript', 'solution', 'solve', 'give']):
+                        resolved_query = f"{last_topic} ({prompt})"
+                    else:
+                        resolved_query = f"{last_topic} - {prompt}"
+
             # Instant Academic Curriculum Engine (<0.001s, 0 network wait)
             try:
                 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "api"))
                 from index import synthesize_academic_response, normalize_query_and_short_forms
-                norm_prompt = normalize_query_and_short_forms(prompt)
+                norm_prompt = normalize_query_and_short_forms(resolved_query)
                 instant_acad = synthesize_academic_response(norm_prompt, only_curated=True)
                 if instant_acad:
                     session_data["messages"].append({"role": "user", "content": original_prompt, "agents": []})

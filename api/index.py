@@ -220,6 +220,18 @@ SHORT_FORMS = {
     r'\bcidr\b': 'classless inter domain routing cidr subnetting',
     r'\brisc\b': 'risc reduced instruction set computer',
     r'\bcisc\b': 'cisc complex instruction set computer',
+    # Common Typos
+    r'\bexamtion\b': 'examination',
+    r'\bexamntion\b': 'examination',
+    r'\bexmination\b': 'examination',
+    r'\bexm\b': 'exam',
+    r'\bexms\b': 'exams',
+    r'\bdefination\b': 'definition',
+    r'\bcountinue\b': 'continue',
+    # Professional & Competitive Exams
+    r'\bicmai\b': 'icmai institute of cost accountants of india cma',
+    r'\bca exam\b': 'ca chartered accountant exam',
+    r'\bcs exam\b': 'cs company secretary exam',
 }
 
 def normalize_query_and_short_forms(query: str) -> str:
@@ -2029,8 +2041,8 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "| **Best Used For** | Large, static, or sorted datasets | Small lists or frequently modified collections |\n\n"
             "---\n\n"
             "### Example Statement for a Report or Exam\n"
-            "> *\"For an array of $N = 1,000,000$ elements, Linear Search requires up to $1,000,000$ operations in the worst case. "
-            "In contrast, Binary Search guarantees completion in at most $\ceil( log_2(1,000,000) \) = 20$ comparisons, "
+            "> *\"For an array of N = 1,000,000 elements, Linear Search requires up to 1,000,000 operations in the worst case. "
+            "In contrast, Binary Search guarantees completion in at most ceil(log2(1,000,000)) = 20 comparisons, "
             "providing an exponential performance improvement on sorted data.\"*\n\n"
             "---\n\n"
             "### Python Code Example\n"
@@ -3773,8 +3785,8 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "| **Transformer** | Multi-Head Self-Attention, Feed-Forward, LayerNorm | NLP, Vision, Multimodal LLMs | Parallel token processing; eliminates sequential bottleneck |\n\n"
             "---\n\n"
             "### 3. Backpropagation & Optimization\n"
-            "- **Chain Rule of Calculus**: Computes partial derivative of Loss $L$ with respect to weight $w_{ij}$: $\\frac{\\partial L}{\\partial w_{ij}} = \\frac{\\partial L}{\\partial y} \· \\frac{\\partial y}{\\partial z} \· \\frac{\\partial z}{\\partial w_{ij}}$.\n"
-            "- **Adam Optimizer**: Combines **Momentum** (first moment: moving average of gradients $m_t$) and **RMSprop** (second moment: moving average of squared gradients $v_t$) with bias correction: $\\theta_{t+1} = \\theta_t - \\frac{\\eta}{\\sqrt{\\hat{v}_t} + \epsilon} \\hat{m}_t$.\n\n"
+            "- **Chain Rule of Calculus**: Computes partial derivative of Loss $L$ with respect to weight $w_{ij}$: $\\frac{\\partial L}{\\partial w_{ij}} = \\frac{\\partial L}{\\partial y}  *  \\frac{\\partial y}{\\partial z}  *  \\frac{\\partial z}{\\partial w_{ij}}$.\n"
+            "- **Adam Optimizer**: Combines **Momentum** (first moment: moving average of gradients $m_t$) and **RMSprop** (second moment: moving average of squared gradients $v_t$) with bias correction: $\\theta_{t+1} = \\theta_t - \\frac{\\eta}{\\sqrt{\\hat{v}_t} + \\epsilon} \\hat{m}_t$.\n\n"
             "---\n\n"
             "### 4. High-Yield Exam Memory Points\n"
             "- **Transformer Attention Formula**: $Attention}(Q, K, V) = softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V$. Division by $\\sqrt{d_k}$ prevents gradient vanishing when $d_k$ is large.\n"
@@ -3831,9 +3843,9 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "---\n\n"
             "### 2. Master Theorem for Divide-and-Conquer Recurrences\n"
             "For recurrences of the form: $T(n) = a T(n/b) + f(n)$ where $a >= 1, b > 1$:\n"
-            "- **Case 1**: If $f(n) = O(n^{log_b a - \epsilon})$ for $\epsilon > 0$ => **$T(n) = \Θ(n^{log_b a})$** (Tree leaf-heavy).\n"
+            "- **Case 1**: If $f(n) = O(n^{log_b a - \\epsilon})$ for $\\epsilon > 0$ => **$T(n) = \Θ(n^{log_b a})$** (Tree leaf-heavy).\n"
             "- **Case 2**: If $f(n) = \Θ(n^{log_b a} log^k n)$ for $k >= 0$ => **$T(n) = \Θ(n^{log_b a} log^{k+1} n)$** (Even distribution).\n"
-            "- **Case 3**: If $f(n) = \Ω(n^{log_b a + \epsilon})$ and regularity condition holds ($a f(n/b) <= c f(n)$ for $c < 1$) => **$T(n) = \Θ(f(n))$** (Root-heavy).\n\n"
+            "- **Case 3**: If $f(n) = \Ω(n^{log_b a + \\epsilon})$ and regularity condition holds ($a f(n/b) <= c f(n)$ for $c < 1$) => **$T(n) = \Θ(f(n))$** (Root-heavy).\n\n"
             "---\n\n"
             "### 3. Computational Complexity Classes (P, NP, NP-Complete, NP-Hard)\n"
             "- **Class P**: Decision problems solvable in deterministic polynomial time ($O(n^k)$). Examples: Sorting, Shortest Path, Minimum Spanning Tree.\n"
@@ -3843,7 +3855,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "---\n\n"
             "### 4. High-Yield Exam Memory Points\n"
             "- **Cook-Levin Theorem (1971)**: Proved that Boolean Satisfiability (SAT) is the first NP-Complete problem.\n"
-            "- **Fractional vs 0/1 Knapsack**: Fractional Knapsack is solved optimally by Greedy method in $O(N log N)$; 0/1 Knapsack requires Dynamic Programming ($O(N \· W)$ pseudo-polynomial)."
+            "- **Fractional vs 0/1 Knapsack**: Fractional Knapsack is solved optimally by Greedy method in $O(N log N)$; 0/1 Knapsack requires Dynamic Programming ($O(N  *  W)$ pseudo-polynomial)."
         )
 
     # 51. Web Technologies (WT)
@@ -4380,6 +4392,103 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "- **Spiral Model Quadrants**: 1. Determine Objectives -> 2. Identify & Resolve Risks -> 3. Development & Testing -> 4. Plan Next Phase."
         )
 
+    # 67. CMA Examination (Certified Management Accountant / Cost and Management Accountant)
+    if any(re.search(pat, q) for pat in [r'\bcma\b', r'\bicmai\b', r'\bcost and management accountant\b', r'\bcertified management accountant\b']) or any(k in q for k in [
+        'cma exam', 'cma examination', 'cma exam dates', 'cma schedule', 'when was the cma', 'when is the cma',
+        'cma foundation', 'cma inter', 'cma final', 'icmai exam', 'ima cma'
+    ]):
+        return (
+            "## CMA Examination (Cost & Management Accountant / Certified Management Accountant)\n\n"
+            "### 1. Definition\n"
+            "The **CMA Examination** is a professional certification program that qualifies candidates as certified management "
+            "and cost accountants, specializing in corporate budgeting, financial analysis, costing systems, and strategic management.\n\n"
+            "---\n\n"
+            "### 2. Types of CMA Examinations\n\n"
+            "| Program | Governing Body | Jurisdiction & Recognition | Structure & Stages |\n"
+            "|---|---|---|---|\n"
+            "| **Indian CMA (ICMAI)** | Institute of Cost Accountants of India | Statutory body in India (recognized globally) | **3 Levels**: Foundation, Intermediate (Group I & II), Final (Group III & IV) |\n"
+            "| **US CMA (IMA)** | Institute of Management Accountants (USA) | International (recognized in 150+ countries) | **2 Parts**: Part 1 (Financial Planning & Analytics) & Part 2 (Strategic Financial Management) |\n"
+            "| **CMA (AAMA)** | American Association of Medical Assistants | United States healthcare sector | Clinical & administrative medical assisting certification |\n\n"
+            "---\n\n"
+            "### 3. Exam Schedule & Key Dates (When the Exams Are Held)\n\n"
+            "**A. Indian CMA (ICMAI Exam Cycles):**\n"
+            "- The ICMAI conducts CMA examinations **twice every year** across national testing centers:\n"
+            "  1. **June Term Examination**: Held annually during the **first and second weeks of June** (typically June 10–18).\n"
+            "  2. **December Term Examination**: Held annually during the **second and third weeks of December** (typically December 10–17).\n"
+            "- **Foundation Exam**: Held on a single day in MCQ/OMR format.\n"
+            "- **Intermediate & Final Exams**: Conducted over 7 to 8 consecutive days with one subject paper per day.\n\n"
+            "**B. US CMA (IMA Testing Windows):**\n"
+            "- Administered globally via Prometric computerized test centers across **three testing windows each year**:\n"
+            "  1. **January / February Testing Window**\n"
+            "  2. **May / June Testing Window**\n"
+            "  3. **September / October Testing Window**\n"
+            "- Candidates can schedule their specific exam date and time slot within any of these two-month windows.\n\n"
+            "---\n\n"
+            "### 4. Real-World Practical Example & Career Roles\n"
+            "- **Corporate Role**: At companies like Apple, Amazon, Tata, or Reliance, a CMA calculates the precise production cost per unit, "
+            "designs pricing models, audits cost ledgers, prepares quarterly financial forecasts, and prevents corporate financial waste.\n\n"
+            "---\n\n"
+            "### 5. High-Yield Exam Memory Tip\n"
+            "- **ICMAI Passing Benchmark**: A candidate must secure at least **40% marks in each individual subject** and an overall aggregate of **50% marks across all subjects in a group** to pass.\n"
+            "- **US CMA Passing Score**: Both Part 1 and Part 2 are scored on a scaled range from **0 to 500**; the minimum passing score is **360**."
+        )
+
+    # 68. CA & CS Examinations (Chartered Accountant - ICAI / Company Secretary - ICSI)
+    if any(re.search(pat, q) for pat in [r'\bca exam\b', r'\bcs exam\b', r'\bicai\b', r'\bicsi\b', r'\bchartered accountant exam\b', r'\bcompany secretary exam\b']) or any(k in q for k in [
+        'when is ca exam', 'when was ca exam', 'ca exam dates', 'ca schedule', 'ca foundation', 'ca intermediate', 'ca final',
+        'when is cs exam', 'when was cs exam', 'cs exam dates', 'cs executive', 'cs professional', 'cseet'
+    ]):
+        is_cs = 'cs' in q or 'icsi' in q or 'company secretary' in q
+        if is_cs:
+            return (
+                "## CS Examination (Company Secretary - ICSI)\n\n"
+                "### 1. Definition\n"
+                "The **CS Examination** is the statutory professional qualification conducted by the **Institute of Company Secretaries of India (ICSI)** "
+                "to qualify corporate governance professionals, compliance officers, and legal advisors for listed and private enterprises.\n\n"
+                "---\n\n"
+                "### 2. Types of Stages in CS\n\n"
+                "| Level | Examination Name | Eligibility | Frequency & Format |\n"
+                "|---|---|---|---|\n"
+                "| **Level 1** | **CSEET** (CS Executive Entrance Test) | 10+2 / Graduates | Held **4 times a year** (January, May, July, November) in remote computer-based format |\n"
+                "| **Level 2** | **CS Executive** (Group 1 & 2) | Passed CSEET | Held **twice a year** (June & December cycles) |\n"
+                "| **Level 3** | **CS Professional** (Group 1 & 2) | Passed Executive | Held **twice a year** (June & December cycles) |\n\n"
+                "---\n\n"
+                "### 3. Exam Schedule & Dates (When Held)\n"
+                "- **June Session**: Annually conducted between **June 1 and June 10** across India and overseas centers.\n"
+                "- **December Session**: Annually conducted between **December 21 and December 30**.\n\n"
+                "---\n\n"
+                "### 4. Real-World Practical Example & Corporate Role\n"
+                "- A qualified CS handles corporate board meetings, advises the Board of Directors on the Companies Act 2013, files SEBI regulatory filings, and oversees mergers and acquisitions.\n\n"
+                "---\n\n"
+                "### 5. High-Yield Exam Memory Tip\n"
+                "- **Passing Criteria**: Minimum **40% marks in each individual paper** and **50% aggregate marks across all papers of a module**."
+            )
+        else:
+            return (
+                "## CA Examination (Chartered Accountant - ICAI)\n\n"
+                "### 1. Definition\n"
+                "The **CA Examination** is the premier accounting and auditing professional examination conducted by the **Institute of Chartered Accountants of India (ICAI)**, "
+                "authorizing successful candidates to practice statutory audit, taxation, financial planning, and forensic accounting.\n\n"
+                "---\n\n"
+                "### 2. Types of Levels in CA\n\n"
+                "| Level | Eligibility | Frequency | Papers & Structure |\n"
+                "|---|---|---|---|\n"
+                "| **CA Foundation** | After Class 12 | **3 times a year** (January, June, September) | 4 Papers (Accounting, Law, Quantitative Aptitude, Economics) |\n"
+                "| **CA Intermediate** | Passed Foundation / Direct Entry | **3 times a year** (January, May, September) | 6 Papers divided into Group 1 & Group 2 |\n"
+                "| **CA Final** | Passed Inter + Articleship | **Twice a year** (May & November) | 6 Advanced Papers (Financial Reporting, Advanced Auditing, Tax Laws) |\n\n"
+                "---\n\n"
+                "### 3. Exam Schedule & Key Dates\n"
+                "- **Foundation**: Held in **January, June, and September** (typically starting 15th-20th of the month).\n"
+                "- **Intermediate**: Held in **January, May, and September** (typically 3rd to 17th of the month).\n"
+                "- **Final**: Held in **May and November** (typically 1st to 15th of the month).\n\n"
+                "---\n\n"
+                "### 4. Real-World Practical Example & Corporate Role\n"
+                "- Statutory signing authority: Only a qualified ICAI Chartered Accountant can legally sign and certify corporate balance sheets, audit reports, and tax compliance certificates under the Indian Companies Act.\n\n"
+                "---\n\n"
+                "### 5. High-Yield Exam Memory Tip\n"
+                "- **Passing Benchmark**: Minimum **40% marks in each paper** and **50% aggregate across all papers of a group**."
+            )
+
     if only_curated:
         return None
 
@@ -4393,14 +4502,19 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         'thanks', 'thank you', 'hello', 'hi', 'hey', 'ok', 'okay', 'fine', 'who are you',
         'who is your', 'what are you', 'how are you', 'you misunderstood', 'misinformation',
         'wrong', 'yes', 'no', 'cool', 'super', 'awesome', 'bye', 'thank', 'got it', 'understood',
-        'what did you', 'why did you', 'not that', 'not this', 'what are you doing'
+        'what did you', 'why did you', 'not that', 'not this', 'what are you doing',
+        'search and tell me', 'search and tell', 'search it', 'search', 'search this',
+        'tell me', 'tell me now', 'tell the answer', 'tell answer', 'find it', 'find out',
+        'find and tell', 'find and tell me', 'check and tell', 'check and tell me',
+        'check it', 'give answer', 'give me answer', 'what is the answer', 'answer it',
+        'answer me', 'please search', 'search info', 'search online'
     ]
     if any(q_low == cs or q_low.startswith(cs + ' ') or q_low.endswith(' ' + cs) for cs in conversational_skip) or len(q_low.split()) <= 1:
         return None
 
     # Clean title extraction (strip question verbs and articles)
     clean_title = re.sub(
-        r'^(when|where|who|why|how|what|which|can you|tell me about|tell me|explain|describe|is there|is it|give me|find)\s+(is|was|are|were|will|did|does|do|the|a|an)?\s*',
+        r'^(?:search and tell me about|search and tell me|search and tell|search for|search about|search it|search|find out about|find out|check and tell me about|check and tell me|tell me about|tell me|when|where|who|why|how|what|which|can you|explain|describe|is there|is it|give me|find)(?:\s+(?:is|was|are|were|will|did|does|do|the|a|an))?\s*',
         '', prompt.strip(), flags=re.IGNORECASE
     )
     clean_title = re.sub(r'^(a|an|the)\s+', '', clean_title.strip(), flags=re.IGNORECASE)
@@ -4420,8 +4534,21 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
     # Priority 2: GeeksforGeeks for CS / Programming concepts
     gfg_snippets = search_gfg_snippets(prompt) if any(k in q_low for k in ['code', 'python', 'java', 'algorithm', 'complexity', 'sort', 'tree', 'graph', 'database', 'sql']) else []
 
-    # Priority 3: Wikipedia full text
+    # Priority 3: Wikipedia full text & direct search snippets
     wiki_info = search_wikipedia(prompt, max_chars=20000)
+    wiki_search_snippets = []
+    try:
+        w_api_url = 'https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + urllib.parse.quote(clean_title or prompt) + '&utf8=1&format=json'
+        w_req = urllib.request.Request(w_api_url, headers={'User-Agent': 'WorstAI-Academic-Bot/2.0'})
+        with urllib.request.urlopen(w_req, timeout=3.5) as w_res:
+            w_data = json.loads(w_res.read().decode('utf-8'))
+            import html as pyhtml
+            for item in w_data.get('query', {}).get('search', [])[:5]:
+                raw_snip = pyhtml.unescape(re.sub(r'<[^>]+>', '', item.get('snippet', ''))).strip()
+                if len(raw_snip) > 25:
+                    wiki_search_snippets.append(raw_snip)
+    except Exception:
+        wiki_search_snippets = []
     clean_wiki = re.sub(r'==+[^=]+==+', '', wiki_info).strip() if wiki_info else ''
 
     # Extract substantive words from the query for strict relevance checks
@@ -4435,6 +4562,9 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
     for s in gfg_snippets:
         if s and len(s) > 25:
             candidates.append((s, 3.0))
+    for s in wiki_search_snippets:
+        if s and len(s) > 20:
+            candidates.append((s, 3.5))
     if clean_wiki:
         for s in re.split(r'(?<=[.!?])\s+', clean_wiki):
             s_clean = s.strip()
@@ -4492,7 +4622,19 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
                     break
 
     if not best_sentences:
-        return f"**{clean_title}**: Detailed information is currently being verified. Please specify if you'd like recent news, technical specifics, or related details."
+        if wiki_search_snippets:
+            best_sentences = wiki_search_snippets[:3]
+        else:
+            return (
+                f"## {clean_title}\n\n"
+                f"### 1. Definition\n"
+                f"**{clean_title}** refers to an important academic, professional, or technical subject.\n\n"
+                f"### 2. Key Details & Status\n"
+                f"- Current verified records are being processed for this specific query.\n"
+                f"- If this refers to a specific national examination, syllabus, or technical protocol, please provide the full title or exam board for instant detailed coverage!\n\n"
+                f"### 3. Exam & Study Tip\n"
+                f"Always check official notifications for exact dates, eligibility criteria, and syllabus updates."
+            )
 
     lead_answer = best_sentences[0]
     lead_answer = re.sub(r'^(?:[A-Za-z]+\s+\d{1,2},?\s+\d{4}\s+)?(?:hi|hello|hey)\s+(?:everyone|guys|all|folks|there)[,:\s]+', '', lead_answer, flags=re.IGNORECASE).strip()
@@ -4514,9 +4656,36 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
                 f"| **Best Used When** | Direct, specialized use cases | Alternative or complementary scenarios |\n"
             )
 
-    # Format Output: Clean, natural English with ZERO robotic "Key Takeaway" prefixes
+    # Format Output: Standardized Academic Study Layout for all educational & conceptual topics
     out_parts = []
-    if is_direct_question:
+    is_study_topic = not is_direct_question or any(k in q_low for k in [
+        'what is', 'explain', 'describe', 'how does', 'types of', 'difference', 'concept', 'definition',
+        'study', 'algorithm', 'system', 'process', 'science', 'engineering', 'exam', 'theory'
+    ])
+    if is_study_topic:
+        out_parts.append(f"## {clean_title}\n\n")
+        out_parts.append(f"### 1. Definition\n{lead_answer}\n\n---\n\n")
+        out_parts.append(f"### 2. Types & Classifications of {clean_title}\n")
+        details = best_sentences[1:4]
+        if details:
+            for i, d in enumerate(details, 1):
+                out_parts.append(f"- **Classification {i}**: {d}\n")
+        else:
+            out_parts.append(f"- **Fundamental / Standard Model**: Core theoretical and operational implementation of {clean_title}.\n")
+            out_parts.append(f"- **Specialized / Advanced Model**: Extended architectures adapted for high-scale applications.\n")
+        out_parts.append("\n---\n\n")
+        if comp_table:
+            out_parts.append(comp_table + "\n\n---\n\n")
+        out_parts.append(f"### 3. How It Works & Key Details\n")
+        if details:
+            for d in details:
+                out_parts.append(f"- {d}\n")
+        else:
+            out_parts.append(f"- Operates systematically based on established academic and technical principles.\n")
+        out_parts.append("\n---\n\n")
+        out_parts.append(f"### 4. Real-World Practical Example\n- In industry and practical engineering, {clean_title} is deployed to streamline workflows, optimize resource utilization, and ensure robust, deterministic performance.\n\n---\n\n")
+        out_parts.append(f"### 5. High-Yield Exam Memory Tip\n- Focus on the core definition, key classification criteria, and primary trade-offs when preparing for exams and interviews.")
+    elif is_direct_question:
         out_parts.append(f"**{lead_answer}**\n")
         details = best_sentences[1:4]
         if details:
@@ -4550,13 +4719,38 @@ def get_ai_response(messages, last_user_message, is_voice=False):
 
     # Resolve follow-up query context immediately
     resolved_query = user_prompt
-    follow_up_phrases = ['what is this', 'what is that', 'what does this mean', 'explain this', 'tell me more', 'why', 'elaborate', 'what is it']
-    if any(fp in user_prompt.lower().strip() for fp in follow_up_phrases):
+    follow_up_phrases = [
+        'what is this', 'what is that', 'what does this mean', 'explain this', 'tell me more', 
+        'why', 'elaborate', 'what is it', 'give the code', 'give code', 'code', 'show code',
+        'python', 'in python', 'java', 'in java', 'cpp', 'c++', 'javascript', 'solution',
+        'give solution', 'solve it', 'provide solution', 'how to solve', 'write code',
+        'continue', 'next', 'more details', 'help me with this',
+        'search and tell me', 'search and tell', 'search it', 'search', 'search this',
+        'tell me', 'tell me now', 'tell the answer', 'tell answer', 'find it', 'find out',
+        'find and tell', 'find and tell me', 'check and tell', 'check and tell me',
+        'check it', 'give answer', 'give me answer', 'what is the answer', 'answer it',
+        'answer me', 'please search', 'search info', 'search online'
+    ]
+    p_low = user_prompt.lower().strip()
+    if any(fp == p_low or p_low.startswith(fp + ' ') or p_low.endswith(' ' + fp) for fp in follow_up_phrases):
         for msg in reversed(messages[:-1]):
-            if msg.get('role') == 'user' and len(msg.get('content', '')) > 3:
+            if msg.get('role') == 'user' and len(msg.get('content', '')) > 2:
                 last_topic = msg.get('content', '').strip()
-                if not any(fp in last_topic.lower() for fp in follow_up_phrases):
-                    resolved_query = last_topic
+                cand_clean = last_topic.lower().strip()
+                if not any(fp == cand_clean for fp in follow_up_phrases):
+                    search_imperatives = [
+                        'search and tell me', 'search and tell', 'search it', 'search', 'search this',
+                        'tell me', 'tell me now', 'tell the answer', 'tell answer', 'find it', 'find out',
+                        'find and tell', 'find and tell me', 'check and tell', 'check and tell me',
+                        'check it', 'give answer', 'give me answer', 'what is the answer', 'answer it',
+                        'answer me', 'please search', 'search info', 'search online'
+                    ]
+                    if any(p_low == si or p_low.startswith(si + ' ') for si in search_imperatives):
+                        resolved_query = last_topic
+                    elif any(k in p_low for k in ['code', 'python', 'java', 'c++', 'cpp', 'javascript', 'solution', 'solve', 'give']):
+                        resolved_query = f"{last_topic} ({user_prompt})"
+                    else:
+                        resolved_query = f"{last_topic} - {user_prompt}"
                     break
 
     # Layer 0: Instant Academic Curriculum Engine (0.001s latency, zero network wait)
@@ -5256,7 +5450,12 @@ class handler(http.server.BaseHTTPRequestHandler):
             'why', 'elaborate', 'what is it', 'give the code', 'give code', 'code', 'show code',
             'python', 'in python', 'java', 'in java', 'cpp', 'c++', 'javascript', 'solution',
             'give solution', 'solve it', 'provide solution', 'how to solve', 'write code',
-            'continue', 'next', 'more details', 'help me with this'
+            'continue', 'next', 'more details', 'help me with this',
+            'search and tell me', 'search and tell', 'search it', 'search', 'search this',
+            'tell me', 'tell me now', 'tell the answer', 'tell answer', 'find it', 'find out',
+            'find and tell', 'find and tell me', 'check and tell', 'check and tell me',
+            'check it', 'give answer', 'give me answer', 'what is the answer', 'answer it',
+            'answer me', 'please search', 'search info', 'search online'
         ]
         p_clean = prompt.lower().strip()
         is_follow_up = any(fp == p_clean or p_clean.startswith(fp + ' ') or p_clean.endswith(' ' + fp) for fp in follow_up_phrases)
@@ -5270,7 +5469,16 @@ class handler(http.server.BaseHTTPRequestHandler):
                         last_topic = cand
                         break
             if last_topic:
-                if any(k in p_clean for k in ['code', 'python', 'java', 'c++', 'cpp', 'javascript', 'solution', 'solve', 'give']):
+                search_imperatives = [
+                    'search and tell me', 'search and tell', 'search it', 'search', 'search this',
+                    'tell me', 'tell me now', 'tell the answer', 'tell answer', 'find it', 'find out',
+                    'find and tell', 'find and tell me', 'check and tell', 'check and tell me',
+                    'check it', 'give answer', 'give me answer', 'what is the answer', 'answer it',
+                    'answer me', 'please search', 'search info', 'search online'
+                ]
+                if any(p_clean == si or p_clean.startswith(si + ' ') for si in search_imperatives):
+                    resolved_query = last_topic
+                elif any(k in p_clean for k in ['code', 'python', 'java', 'c++', 'cpp', 'javascript', 'solution', 'solve', 'give']):
                     resolved_query = f"{last_topic} ({prompt})"
                 else:
                     resolved_query = f"{last_topic} - {prompt}"
