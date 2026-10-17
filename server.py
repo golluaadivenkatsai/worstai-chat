@@ -66,41 +66,51 @@ def should_perform_research(query: str) -> bool:
         'weather', 'climate', 'temperature', 'forecast', 'rain', 'news', 'today', 
         'yesterday', 'current', 'live', 'latest', 'recent', 'who won', 'match', 
         'score', 'ipl', 'cricket', 'election', 'stock', 'price of', 'released', 
-        'upcoming', 'when is', '2026', '2025'
+        'upcoming', 'when is', 'when was', '2026', '2025', 'exam', 'examination',
+        'exam date', 'exam dates', 'schedule', 'timetable', 'present', 'term', 'cutoff'
     ]
     return any(k in q for k in live_keywords)
 
 def perform_research(query):
-    """Simple Web Research Agent: Queries Wikipedia API for context."""
+    """Multi-Source Live Web Research: Queries live DuckDuckGo web snippets and Wikipedia."""
     if not should_perform_research(query):
         return "No external research found."
+    findings = []
+    
+    # 1. Live DuckDuckGo web snippets for real-time present information
     try:
-        # Search for the query
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "api"))
+        from index import search_duckduckgo
+        ddg_results = search_duckduckgo(query, max_results=3)
+        for u, s in ddg_results:
+            if s and len(s) > 25:
+                findings.append(f"[Live Web Snippet: {u}]\n{s}")
+    except Exception as e:
+        print(f"[WARN] Live search error: {e}")
+
+    # 2. Wikipedia fallback / supplementary summary
+    try:
         search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={urllib.parse.quote(query)}&utf8=&format=json"
         req = urllib.request.Request(search_url, headers={'User-Agent': 'WorstAI-Agent/1.0'})
-        response = urllib.request.urlopen(req, timeout=5)
-        data = json.loads(response.read().decode('utf-8'))
-        
-        search_results = data.get('query', {}).get('search', [])
-        if not search_results:
-            return "No external research found."
-            
-        # Get the page ID of the top result
-        page_id = search_results[0]['pageid']
-        
-        # Get the extract (summary) of that page
-        summary_url = f"https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exsentences=5&exlimit=1&pageids={page_id}&explaintext=1&format=json"
-        req2 = urllib.request.Request(summary_url, headers={'User-Agent': 'WorstAI-Agent/1.0'})
-        response2 = urllib.request.urlopen(req2, timeout=5)
-        data2 = json.loads(response2.read().decode('utf-8'))
-        
-        pages = data2.get('query', {}).get('pages', {})
-        if str(page_id) in pages:
-            return pages[str(page_id)].get('extract', "No external research found.")
-    except Exception as e:
-        print(f"[RESEARCH ERROR] {e}")
-        return "Failed to fetch external research."
-    
+        with urllib.request.urlopen(req, timeout=3.5) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            search_results = data.get('query', {}).get('search', [])
+            if search_results:
+                page_id = search_results[0]['pageid']
+                summary_url = f"https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exsentences=4&exlimit=1&pageids={page_id}&explaintext=1&format=json"
+                req2 = urllib.request.Request(summary_url, headers={'User-Agent': 'WorstAI-Agent/1.0'})
+                with urllib.request.urlopen(req2, timeout=3.5) as response2:
+                    data2 = json.loads(response2.read().decode('utf-8'))
+                    pages = data2.get('query', {}).get('pages', {})
+                    if str(page_id) in pages:
+                        extract = pages[str(page_id)].get('extract', '')
+                        if extract:
+                            findings.append(f"[Wikipedia Summary]\n{extract}")
+    except Exception:
+        pass
+
+    if findings:
+        return "\n\n---\n\n".join(findings)
     return "No external research found."
 
 class SwarmHandler(http.server.SimpleHTTPRequestHandler):

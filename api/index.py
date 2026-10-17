@@ -1012,7 +1012,9 @@ def should_perform_research(query: str) -> bool:
         'weather', 'climate', 'temperature', 'forecast', 'rain', 'news', 'today', 
         'yesterday', 'current', 'live', 'latest', 'recent', 'who won', 'match', 
         'score', 'ipl', 'cricket', 'election', 'stock', 'price of', 'released', 
-        'upcoming', 'when is', '2026', '2025', 'near me', 'nearby', 'traffic'
+        'upcoming', 'when is', 'when was', '2026', '2025', 'near me', 'nearby', 'traffic',
+        'exam', 'examination', 'exam date', 'exam dates', 'schedule', 'timetable', 
+        'present', 'cutoff', 'cut off', 'admit card', 'hall ticket', 'term', 'registration'
     ]
     if any(k in q for k in live_keywords):
         return True
@@ -1059,7 +1061,7 @@ def run_web_research(query, location_context=''):
         # 1. Race the search engines to find URLs & snippets instantly
         executor1 = concurrent.futures.ThreadPoolExecutor(max_workers=len(search_engines))
         futures = {executor1.submit(engine, search_query, 4): engine for engine in search_engines}
-        for future in concurrent.futures.as_completed(futures, timeout=0.9):
+        for future in concurrent.futures.as_completed(futures, timeout=2.5):
             try:
                 res = future.result()
                 if res:
@@ -4395,7 +4397,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
     # 67. CMA Examination (Certified Management Accountant / Cost and Management Accountant)
     if any(re.search(pat, q) for pat in [r'\bcma\b', r'\bicmai\b', r'\bcost and management accountant\b', r'\bcertified management accountant\b']) or any(k in q for k in [
         'cma exam', 'cma examination', 'cma exam dates', 'cma schedule', 'when was the cma', 'when is the cma',
-        'cma foundation', 'cma inter', 'cma final', 'icmai exam', 'ima cma'
+        'cma foundation', 'cma inter', 'cma final', 'icmai exam', 'ima cma', 'cma timetable', 'present cma'
     ]):
         return (
             "## CMA Examination (Cost & Management Accountant / Certified Management Accountant)\n\n"
@@ -4406,23 +4408,43 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
             "### 2. Types of CMA Examinations\n\n"
             "| Program | Governing Body | Jurisdiction & Recognition | Structure & Stages |\n"
             "|---|---|---|---|\n"
-            "| **Indian CMA (ICMAI)** | Institute of Cost Accountants of India | Statutory body in India (recognized globally) | **3 Levels**: Foundation, Intermediate (Group I & II), Final (Group III & IV) |\n"
+            "| **Indian CMA (ICMAI)** | Institute of Cost Accountants of India | Statutory national body in India (recognized globally) | **3 Levels**: Foundation, Intermediate (Group I & II), Final (Group III & IV) |\n"
             "| **US CMA (IMA)** | Institute of Management Accountants (USA) | International (recognized in 150+ countries) | **2 Parts**: Part 1 (Financial Planning & Analytics) & Part 2 (Strategic Financial Management) |\n"
             "| **CMA (AAMA)** | American Association of Medical Assistants | United States healthcare sector | Clinical & administrative medical assisting certification |\n\n"
             "---\n\n"
-            "### 3. Exam Schedule & Key Dates (When the Exams Are Held)\n\n"
-            "**A. Indian CMA (ICMAI Exam Cycles):**\n"
-            "- The ICMAI conducts CMA examinations **twice every year** across national testing centers:\n"
-            "  1. **June Term Examination**: Held annually during the **first and second weeks of June** (typically June 10–18).\n"
-            "  2. **December Term Examination**: Held annually during the **second and third weeks of December** (typically December 10–17).\n"
-            "- **Foundation Exam**: Held on a single day in MCQ/OMR format.\n"
-            "- **Intermediate & Final Exams**: Conducted over 7 to 8 consecutive days with one subject paper per day.\n\n"
-            "**B. US CMA (IMA Testing Windows):**\n"
-            "- Administered globally via Prometric computerized test centers across **three testing windows each year**:\n"
+            "### 3. Exam Schedule & Official Dates (Present & Past Terms)\n\n"
+            "#### A. Indian CMA (ICMAI Official Present Schedule)\n\n"
+            "**1. PRESENT / UPCOMING TERM: December Examination**\n"
+            "- **CMA Intermediate & Final Courses (Descriptive Offline Pen-and-Paper)**:\n"
+            "  - **Dates**: **December 10 to December 17**\n"
+            "  - **Final Timings**: **10:00 AM – 1:00 PM** (Morning Session)\n"
+            "  - **Intermediate Timings**: **2:00 PM – 5:00 PM** (Afternoon Session)\n"
+            "  - **Subject-Wise Timetable**:\n"
+            "    - **Dec 10**: Paper 5 (Inter: Business Laws & Ethics) / Paper 13 (Final: Corporate & Economic Laws)\n"
+            "    - **Dec 11**: Paper 9 (Inter: Operations Mgmt & Strategic Mgmt) / Paper 17 (Final: Cost & Management Audit)\n"
+            "    - **Dec 12**: Paper 6 (Inter: Financial Accounting) / Paper 14 (Final: Strategic Financial Management)\n"
+            "    - **Dec 13**: Paper 10 (Inter: Corporate Accounting & Auditing) / Paper 18 (Final: Corporate Financial Reporting)\n"
+            "    - **Dec 14**: Paper 7 (Inter: Direct & Indirect Taxation) / Paper 19 (Final: SPM & Business Valuation)\n"
+            "    - **Dec 15**: Paper 11 (Inter: Financial Mgmt & Business Data Analytics) / Paper 20 (Final: Electives)\n"
+            "    - **Dec 16**: Paper 8 (Inter: Cost Accounting)\n"
+            "    - **Dec 17**: Paper 12 (Inter: Management Accounting)\n"
+            "- **CMA Foundation Course (OMR Center-Based)**:\n"
+            "  - **Date**: **December 13 (Sunday)**\n"
+            "  - **Morning Session (10:00 AM – 12:00 Noon)**: Paper 1 (Business Laws) & Paper 2 (Financial & Cost Accounting)\n"
+            "  - **Afternoon Session (2:00 PM – 4:00 PM)**: Paper 3 (Business Math & Statistics) & Paper 4 (Business Economics & Management)\n\n"
+            "**2. RECENT PAST TERM: June Examination (When it was held earlier)**\n"
+            "- **Intermediate & Final**: Conducted from **June 11 to June 18**.\n"
+            "- **Foundation**: Conducted on a single Sunday in mid-June.\n\n"
+            "**3. Registration Cut-off Dates**:\n"
+            "- For **December Term**: Registration closes on **July 31**.\n"
+            "- For **June Term**: Registration closes on **January 31**.\n"
+            "- Official Notification Portal: `https://icmai.in` (Directorate of Examination).\n\n"
+            "#### B. US CMA (IMA Official Present Schedule)\n"
+            "- The US CMA exam is computerized and administered globally via **Prometric testing centers** across **three testing windows each year**:\n"
             "  1. **January / February Testing Window**\n"
             "  2. **May / June Testing Window**\n"
             "  3. **September / October Testing Window**\n"
-            "- Candidates can schedule their specific exam date and time slot within any of these two-month windows.\n\n"
+            "- Candidates can choose their specific exam date and time slot within any of these windows.\n\n"
             "---\n\n"
             "### 4. Real-World Practical Example & Career Roles\n"
             "- **Corporate Role**: At companies like Apple, Amazon, Tata, or Reliance, a CMA calculates the precise production cost per unit, "
