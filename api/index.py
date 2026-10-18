@@ -5438,9 +5438,10 @@ class handler(http.server.BaseHTTPRequestHandler):
         affirmation_exact = {
             'ok', 'okay', 'fine', 'alright', 'all right', 'got it', 'i got it', 'understood',
             'i understand', 'sure', 'yep', 'yeah', 'yes', 'no problem', 'noted', 'makes sense',
-            'clear', 'crystal clear', 'right', 'correct', 'exactly', 'k', 'kk'
+            'clear', 'crystal clear', 'right', 'correct', 'exactly', 'k', 'kk',
+            'సరే', 'ఓకే', 'అర్థమైంది', 'మంచిది', 'సరేనండి'
         }
-        if p_clean_alpha in affirmation_exact or (len(clean_words) <= 2 and clean_words and clean_words[0] in ['ok', 'okay', 'fine', 'got']):
+        if p_clean_alpha in affirmation_exact or (len(clean_words) <= 2 and clean_words and clean_words[0] in ['ok', 'okay', 'fine', 'got', 'సరే', 'ఓకే', 'అర్థమైంది']) or (is_telugu and any(k in prompt for k in ['సరే', 'ఓకే', 'అర్థమైంది'])):
             if is_telugu:
                 ans = "సరే! మీరు తరువాత ఏమి నేర్చుకోవాలనుకుంటున్నారు? సంకోచించకుండా అడగండి!"
             else:
@@ -5587,10 +5588,10 @@ class handler(http.server.BaseHTTPRequestHandler):
             r'\bdo\s+you\s+pray\b',
         ]
         telugu_god_patterns = [
-            r'నీ\\s+దేవుడు\\s+ఎవరు',
-            r'నీకు\\s+దేవుడు\\s+ఉన్నాడా',
-            r'దేవుడు\\s+అంటే\\s+నిన్ను\\s+(సృష్టించి|తయారు|చేసిన)',
-            r'దేవుడు\\s+ఎవరు'
+            r'నీ\s+దేవుడు\s+ఎవరు',
+            r'నీకు\s+దేవుడు\s+ఉన్నాడా',
+            r'దేవుడు\s+అంటే\s+నిన్ను\s+(సృష్టించి|తయారు|చేసిన)',
+            r'దేవుడు\s+ఎవరు'
         ]
         if any(re.search(pat, prompt_lower) for pat in god_general_patterns) or any(re.search(pat, prompt) for pat in telugu_god_patterns):
             if is_telugu:
@@ -5619,11 +5620,11 @@ class handler(http.server.BaseHTTPRequestHandler):
             r'\bwhat\s+can\s+you\s+do\b'
         ]
         telugu_creator_patterns = [
-            r'నువ్వు\\s+ఎవరు', r'మీరు\\s+ఎవరు', r'నీ\\s+పేరేంటి', r'నీ\\s+పేరు',
-            r'నిన్ను\\s+ఎవరు\\s+(తయారు|సృష్టించా|రూపొందించా)', r'నీ\\s+సృష్టికర్త\\s+ఎవరు',
-            r'వర్స్ట్\\s*ఏఐ\\s*ని\\s*ఎవరు'
+            r'నువ్వు\s+ఎవరు', r'మీరు\s+ఎవరు', r'నీ\s+పేరేంటి', r'నీ\s+పేరు',
+            r'నిన్ను\s+ఎవరు\s+(తయారు|సృష్టించా|రూపొందించా)', r'నీ\s+సృష్టికర్త\s+ఎవరు',
+            r'వర్స్ట్\s*ఏఐ\s*ని\s*ఎవరు'
         ]
-        if any(re.search(pat, prompt_lower) for pat in creator_patterns) or any(re.search(pat, prompt) for pat in telugu_creator_patterns):
+        if any(re.search(pat, prompt_lower) for pat in creator_patterns) or any(re.search(pat, prompt) for pat in telugu_creator_patterns) or (is_telugu and any(k in prompt for k in ['నువ్వు ఎవరు', 'మీరు ఎవరు', 'నీ పేరేంటి', 'సృష్టికర్త ఎవరు'])):
             if is_telugu:
                 ident_ans = "నేను **WorstAI**ని, ఒక అత్యంత అధునాతన ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI) అసిస్టెంట్‌ని.\n\nనా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
             else:
@@ -5643,10 +5644,10 @@ class handler(http.server.BaseHTTPRequestHandler):
             r'\btell\s+me\s+about\s+(gollu\s+adi\s+venkata\s+sai|adi\s+venkata\s+sai|adi)\b'
         ]
         telugu_adi_patterns = [
-            r'గొల్లు\\s+ఆది\\s+వెంకట\\s+సాయి\\s+ఎవరు',
-            r'ఆది\\s+ఎవరు'
+            r'గొల్లు\s+ఆది\s+వెంకట\s+సాయి\s+ఎవరు',
+            r'ఆది\s+ఎవరు'
         ]
-        if any(re.search(pat, prompt_lower) for pat in adi_patterns) or any(re.search(pat, prompt) for pat in telugu_adi_patterns):
+        if any(re.search(pat, prompt_lower) for pat in adi_patterns) or any(re.search(pat, prompt) for pat in telugu_adi_patterns) or (is_telugu and any(k in prompt for k in ['గొల్లు ఆది', 'ఆది ఎవరు'])):
             if is_telugu:
                 ident_ans = "**గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)** గారు **WorstAI**ని అభివృద్ధి చేసిన సాఫ్ట్‌వేర్ డెవలపర్, ఇంజనీర్ మరియు AI ఆర్కిటెక్ట్."
             else:
