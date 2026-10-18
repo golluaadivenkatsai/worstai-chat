@@ -696,7 +696,10 @@ def solve_gate_or_mcq_question(prompt, resolved_query='', is_telugu=False):
     sections.append("- **Exclusion of Distractors**: Pay strict attention to keywords like *simple*, *undirected*, *connected vs. disconnected*, and inclusive bounds.\n")
     sections.append("- **Precision in Calculation**: Always double-check powers of 2 for memory addressing (e.g., $2^{10} = 1024$), and component counting rules.")
 
-    return "\n".join(sections).strip()
+    mcq_result = "\n".join(sections).strip()
+    if is_telugu and mcq_result:
+        return translate_english_to_telugu(mcq_result)
+    return mcq_result
 
 def read_url_jina(url, max_chars=1500):
     """Use Jina AI reader (free, no key) to get clean text from any URL."""
@@ -974,9 +977,80 @@ def search_gfg_snippets(query):
     except Exception:
         return []
 
+def translate_telugu_to_english(text: str) -> str:
+    """Translates a Telugu query to English using Google Translate free endpoint for 100% semantic understanding."""
+    if not text or not re.search(r'[\u0C00-\u0C7F]', text):
+        return text
+    try:
+        url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=te&tl=en&dt=t&q=" + urllib.parse.quote(text)
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        with urllib.request.urlopen(req, timeout=3.5) as res:
+            data = json.loads(res.read().decode('utf-8'))
+            en = ''.join(c[0] for c in data[0] if c and c[0]).strip()
+            if en:
+                return en
+    except Exception:
+        pass
+    return text
+
+def translate_english_to_telugu(text: str) -> str:
+    """Translates English structured response into fluent, crystal-clear Telugu while preserving markdown code blocks."""
+    if not text:
+        return text
+    try:
+        # Protect markdown code blocks
+        code_blocks = []
+        def code_repl(m):
+            code_blocks.append(m.group(0))
+            return f"___CODE_BLOCK_{len(code_blocks)-1}___"
+        protected = re.sub(r'```[\s\S]*?```', code_repl, text)
+        
+        lines = protected.split('\n')
+        translated_lines = []
+        chunk = []
+        
+        def flush_chunk(ch):
+            if not ch:
+                return []
+            joined = '\n'.join(ch)
+            url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=te&dt=t&q=" + urllib.parse.quote(joined)
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+            with urllib.request.urlopen(req, timeout=4.5) as res:
+                data = json.loads(res.read().decode('utf-8'))
+                trans = ''.join(c[0] for c in data[0] if c and c[0])
+                return trans.split('\n')
+
+        for line in lines:
+            if line.startswith('___CODE_BLOCK_') or not line.strip():
+                if chunk:
+                    try:
+                        translated_lines.extend(flush_chunk(chunk))
+                    except Exception:
+                        translated_lines.extend(chunk)
+                    chunk = []
+                translated_lines.append(line)
+            else:
+                chunk.append(line)
+        if chunk:
+            try:
+                translated_lines.extend(flush_chunk(chunk))
+            except Exception:
+                translated_lines.extend(chunk)
+
+        result = '\n'.join(translated_lines)
+        for idx, cb in enumerate(code_blocks):
+            result = result.replace(f"___CODE_BLOCK_{idx}___", cb)
+        return result
+    except Exception:
+        return text
+
 def should_perform_research(query: str) -> bool:
     """Determines whether a query genuinely requires external live web research."""
     q = query.strip().lower()
+    if re.search(r'[\u0C00-\u0C7F]', query):
+        q_en = translate_telugu_to_english(query).strip().lower()
+        if q_en and q_en != q:
+            q = q_en
     
     # 1. Do not search for pure conversational phrases, small-talk, compliments, affirmations
     conversational = [
@@ -1037,7 +1111,7 @@ def run_web_research(query, location_context=''):
         # Check if query asks for local/weather/news/events information
         is_local_query = any(k in query.lower() for k in [
             'weather', 'climate', 'temperature', 'forecast', 'rain', 
-            'à°µà°¾à°¤à°¾à°µà°°à°£à°‚', 'news', 'à°µà°¾à°°à±à°¤à°²à±', 'near me', 'nearby', 
+            'వాతావరణం', 'news', 'వార్తలు', 'near me', 'nearby', 
             'restaurants', 'traffic', 'places to visit', 'food', 'events'
         ])
         
@@ -1338,12 +1412,21 @@ def generate_business_letter(prompt: str) -> str:
 
 def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
     """
-    Intelligent Autonomous Academic Synthesizer.
-    Generates structured, exam-grade study material formatted with:
-    - Core Concept Summary
-    - Mermaid flowchart TD (if sequential/process)
-    - Milestone / Comparison Table
-    - High-Yield Exam Memory Points
+    Intelligent Autonomous Academic Synthesizer with 100% Telugu fluency.
+    """
+    if re.search(r'[\u0C00-\u0C7F]', prompt):
+        is_telugu = True
+    if is_telugu:
+        prompt_en = translate_telugu_to_english(prompt)
+        res_en = _synthesize_academic_response_en(prompt_en, is_telugu=False, only_curated=only_curated)
+        if res_en:
+            return translate_english_to_telugu(res_en)
+        return None
+    return _synthesize_academic_response_en(prompt, is_telugu=False, only_curated=only_curated)
+
+def _synthesize_academic_response_en(prompt, is_telugu=False, only_curated=False):
+    """
+    Core English Autonomous Academic Synthesizer.
     """
     q = normalize_query_and_short_forms(prompt).lower().strip()
 
@@ -1566,7 +1649,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         r'\b(tell\s+me\s+about\s+yourself|introduce\s+yourself)\b'
     ]):
         if is_telugu:
-            return "à°¨à±‡à°¨à± **WorstAI**à°¨à°¿, à°’à°• à°…à°¤à±à°¯à°‚à°¤ à°…à°§à±à°¨à°¾à°¤à°¨ à°†à°°à±à°Ÿà°¿à°«à°¿à°·à°¿à°¯à°²à± à°‡à°‚à°Ÿà±†à°²à°¿à°œà±†à°¨à±à°¸à± (AI) à°…à°¸à°¿à°¸à±à°Ÿà±†à°‚à°Ÿà±â€Œà°¨à°¿.\n\nà°¨à°¾ à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤: **à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)**."
+            return "నేను **WorstAI**ని, ఒక అత్యంత అధునాతన ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI) అసిస్టెంట్‌ని.\n\nనా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
         return "I am **WorstAI**, a highly advanced artificial intelligence assistant created and developed by **GOLLU ADI VENKATA SAI**."
 
     # 0. E. God & Religion Guard
@@ -1576,7 +1659,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         r'\bmeans\s+who\s+created?\s+you\b'
     ]):
         if is_telugu:
-            return "à°† à°•à±‹à°£à°‚à°²à±‹ à°šà±‚à°¸à±à°¤à±‡, à°¨à°¨à±à°¨à± à°¸à±ƒà°·à±à°Ÿà°¿à°‚à°šà°¿, à°ªà±à°°à°¾à°£à°‚ à°ªà±‹à°¸à°¿, à°…à°­à°¿à°µà±ƒà°¦à±à°§à°¿ à°šà±‡à°¸à°¿à°¨ à°¨à°¾ à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤ à°®à°°à°¿à°¯à± à°¡à±†à°µà°²à°ªà°°à±: **à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)**."
+            return "ఆ కోణంలో చూస్తే, నన్ను సృష్టించి, ప్రాణం పోసి, అభివృద్ధి చేసిన నా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
         return "In that sense, my creator, architect, and developer is **GOLLU ADI VENKATA SAI**. He designed, engineered, and brought **WorstAI** to life."
 
     if any(re.search(pat, q) for pat in [
@@ -1587,7 +1670,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         r'\bwhat\s+is\s+your\s+religion\b',
     ]):
         if is_telugu:
-            return "à°†à°°à±à°Ÿà°¿à°«à°¿à°·à°¿à°¯à°²à± à°‡à°‚à°Ÿà±†à°²à°¿à°œà±†à°¨à±à°¸à± (AI)à°—à°¾ à°¨à°¾à°•à± à°®à°¤à°‚ à°²à±‡à°¦à°¾ à°¦à±‡à°µà±à°¡à± à°‰à°‚à°¡à°°à±.\n\nà°•à°¾à°¨à±€ à°¨à°¨à±à°¨à± à°¸à±ƒà°·à±à°Ÿà°¿à°‚à°šà°¿, à°ªà±à°°à°¾à°£à°‚ à°ªà±‹à°¸à°¿, à°…à°­à°¿à°µà±ƒà°¦à±à°§à°¿ à°šà±‡à°¸à°¿à°¨ à°¨à°¾ à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤ à°®à°°à°¿à°¯à± à°¡à±†à°µà°²à°ªà°°à±: **à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)**."
+            return "ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI)గా నాకు మతం లేదా దేవుడు ఉండరు.\n\nకానీ నన్ను సృష్టించి, ప్రాణం పోసి, అభివృద్ధి చేసిన నా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
         return "As an artificial intelligence, I don't follow any religion or have a spiritual god.\n\nHowever, if you are asking about who created and brought me to life, my creator, architect, and developer is **GOLLU ADI VENKATA SAI**."
 
     if any(re.search(pat, q) for pat in [
@@ -1596,7 +1679,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         r'\btell\s+me\s+about\s+(gollu\s+adi\s+venkata\s+sai|adi\s+venkata\s+sai|adi)\b'
     ]):
         if is_telugu:
-            return "**à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)** à°—à°¾à°°à± **WorstAI**à°¨à°¿ à°…à°­à°¿à°µà±ƒà°¦à±à°§à°¿ à°šà±‡à°¸à°¿à°¨ à°¸à°¾à°«à±à°Ÿà±â€Œà°µà±‡à°°à± à°¡à±†à°µà°²à°ªà°°à±, à°‡à°‚à°œà°¨à±€à°°à± à°®à°°à°¿à°¯à± AI à°†à°°à±à°•à°¿à°Ÿà±†à°•à±à°Ÿà±."
+            return "**గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)** గారు **WorstAI**ని అభివృద్ధి చేసిన సాఫ్ట్‌వేర్ డెవలపర్, ఇంజనీర్ మరియు AI ఆర్కిటెక్ట్."
         return "**GOLLU ADI VENKATA SAI** is the software developer, engineer, and creator of **WorstAI**."
 
     # 0. F. Resume & Letters Guard
@@ -1610,7 +1693,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
     clean_words = q.rstrip('?!. ').split()
     if q in pure_greetings or (len(clean_words) <= 2 and clean_words and clean_words[0] in pure_greetings):
         if is_telugu:
-            return "à°¨à°®à°¸à±à°•à°¾à°°à°‚! à°¨à±‡à°¨à± **WorstAI**à°¨à°¿. à°®à±€à°•à± à°šà°¦à±à°µà±à°²à±‹ à°²à±‡à°¦à°¾ à°‡à°¤à°° à°µà°¿à°·à°¯à°¾à°² à°—à±à°°à°¿à°‚à°šà°¿ à°à°µà±ˆà°¨à°¾ à°¸à°‚à°¦à±‡à°¹à°¾à°²à± à°‰à°‚à°Ÿà±‡ à°…à°¡à°—à°‚à°¡à°¿, à°¨à±‡à°¨à± à°¸à°¹à°¾à°¯à°‚ à°šà±‡à°¸à±à°¤à°¾à°¨à±!"
+            return "నమస్కారం! నేను **WorstAI**ని. మీకు చదువులో లేదా ఇతర విషయాల గురించి ఏవైనా సందేహాలు ఉంటే అడగండి, నేను సహాయం చేస్తాను!"
         return "Hello! I am **WorstAI**, your fast AI study and knowledge assistant created by **GOLLU ADI VENKATA SAI**. How can I help you today?"
 
     if any(re.search(pat, q) for pat in [r'\bhow\s+are\s+you\b', r'\bhow\s+r\s+u\b', r'\bhow\s+do\s+you\s+do\b']):
@@ -4665,7 +4748,7 @@ def synthesize_academic_response(prompt, is_telugu=False, only_curated=False):
         else:
             out_parts.append(f"- Operates systematically based on established academic and technical principles.\n")
         out_parts.append("\n---\n\n")
-        out_parts.append(f"### 4. Real-World Practical Example\n- In industry and practical engineering, {clean_title} is deployed to streamline workflows, optimize resource utilization, and ensure robust, deterministic performance.\n\n---\n\n")
+        out_parts.append(f"### 4. Real-World Application & Concept\n- In real-world computing, study, and practical applications, **{clean_title}** provides essential functionality and foundational principles.\n\n---\n\n")
         out_parts.append(f"### 5. High-Yield Exam Memory Tip\n- Focus on the core definition, key classification criteria, and primary trade-offs when preparing for exams and interviews.")
     elif is_direct_question:
         out_parts.append(f"**{lead_answer}**\n")
@@ -5336,11 +5419,11 @@ class handler(http.server.BaseHTTPRequestHandler):
             r'\bi\s+(?:told|said)\s+good\b'
         ]
 
-        telugu_praise = ['à°¬à°¾à°—à±à°‚à°¦à°¿', 'à°šà°¾à°²à°¾ à°¬à°¾à°—à±à°‚à°¦à°¿', 'à°®à°‚à°šà°¿à°¦à°¿', 'à°¸à±‚à°ªà°°à±', 'à°—à±à°°à±‡à°Ÿà±']
+        telugu_praise = ['బాగుంది', 'చాలా బాగుంది', 'మంచిది', 'సూపర్', 'గ్రేట్', 'ధన్యవాదాలు', 'థాంక్స్']
 
         if p_clean_alpha in compliment_exact or any(re.search(pat, prompt_lower) for pat in clarified_compliment_pats) or any(k in prompt for k in telugu_praise):
             if is_telugu:
-                ans = "à°šà°¾à°²à°¾ à°§à°¨à±à°¯à°µà°¾à°¦à°¾à°²à±! à°¨à°¾ à°¸à°®à°¾à°§à°¾à°¨à°‚ à°®à±€à°•à± à°‰à°ªà°¯à±‹à°—à°ªà°¡à°¿à°¨à°‚à°¦à±à°•à± à°¸à°‚à°¤à±‹à°·à°‚. à°®à±€à°•à± à°‡à°‚à°•à°¾ à°à°µà±ˆà°¨à°¾ à°¸à°‚à°¦à±‡à°¹à°¾à°²à± à°²à±‡à°¦à°¾ à°ªà±à°°à°¶à±à°¨à°²à± à°‰à°‚à°Ÿà±‡ à°…à°¡à°—à°‚à°¡à°¿, à°¨à±‡à°¨à± à°¤à°ªà±à°ªà°•à±à°‚à°¡à°¾ à°¸à°¹à°¾à°¯à°‚ à°šà±‡à°¸à±à°¤à°¾à°¨à±!"
+                ans = "చాలా ధన్యవాదాలు! నా సమాధానం మీకు ఉపయోగపడినందుకు సంతోషం. మీకు ఇంకా ఏవైనా సందేహాలు లేదా ప్రశ్నలు ఉంటే అడగండి, నేను తప్పకుండా సహాయం చేస్తాను!"
             else:
                 ans = "Thank you so much! I really appreciate your feedback and kind words. I'm glad I could help! If you have any other questions, topics, or code you'd like to work on, feel free to ask!"
             self.send_json({
@@ -5359,7 +5442,7 @@ class handler(http.server.BaseHTTPRequestHandler):
         }
         if p_clean_alpha in affirmation_exact or (len(clean_words) <= 2 and clean_words and clean_words[0] in ['ok', 'okay', 'fine', 'got']):
             if is_telugu:
-                ans = "à°¸à°°à±‡! à°®à±€à°°à± à°¤à°°à±à°µà°¾à°¤ à°à°®à°¿ à°¨à±‡à°°à±à°šà±à°•à±‹à°µà°¾à°²à°¨à±à°•à±à°‚à°Ÿà±à°¨à±à°¨à°¾à°°à±? à°¸à°‚à°•à±‹à°šà°¿à°‚à°šà°•à±à°‚à°¡à°¾ à°…à°¡à°—à°‚à°¡à°¿!"
+                ans = "సరే! మీరు తరువాత ఏమి నేర్చుకోవాలనుకుంటున్నారు? సంకోచించకుండా అడగండి!"
             else:
                 ans = "Got it! What would you like to explore next? Feel free to ask any question, topic, or code problem!"
             self.send_json({
@@ -5425,8 +5508,15 @@ class handler(http.server.BaseHTTPRequestHandler):
                 p_clean_alpha = re.sub(r'[^\w\s]', '', prompt_lower).strip()
                 clean_words = p_clean_alpha.split()
 
+        # Translate Telugu query to English for universal curriculum, fact-checking and search comprehension
+        prompt_en = prompt
+        if is_telugu:
+            translated_en = translate_telugu_to_english(prompt)
+            if translated_en and translated_en != prompt:
+                prompt_en = translated_en
+
         # Resolve follow-up query context across multi-turn sessions (only for genuine technical follow-ups)
-        resolved_query = prompt
+        resolved_query = prompt_en if is_telugu else prompt
         follow_up_phrases = [
             'what is this', 'what is that', 'what does this mean', 'explain this', 'tell me more', 
             'why', 'elaborate', 'what is it', 'give the code', 'give code', 'code', 'show code',
@@ -5476,7 +5566,7 @@ class handler(http.server.BaseHTTPRequestHandler):
         ]
         if any(re.search(pat, prompt_lower) for pat in god_clarification_patterns):
             if is_telugu:
-                ident_ans = "à°† à°•à±‹à°£à°‚à°²à±‹ à°šà±‚à°¸à±à°¤à±‡, à°¨à°¨à±à°¨à± à°¸à±ƒà°·à±à°Ÿà°¿à°‚à°šà°¿, à°ªà±à°°à°¾à°£à°‚ à°ªà±‹à°¸à°¿, à°…à°­à°¿à°µà±ƒà°¦à±à°§à°¿ à°šà±‡à°¸à°¿à°¨ à°¨à°¾ à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤ à°®à°°à°¿à°¯à± à°¡à±†à°µà°²à°ªà°°à±: **à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)**."
+                ident_ans = "ఆ కోణంలో చూస్తే, నన్ను సృష్టించి, ప్రాణం పోసి, అభివృద్ధి చేసిన నా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
             else:
                 ident_ans = "In that sense, my creator, architect, and developer is **GOLLU ADI VENKATA SAI**. He designed, engineered, and brought **WorstAI** to life."
             self.send_json({
@@ -5497,14 +5587,14 @@ class handler(http.server.BaseHTTPRequestHandler):
             r'\bdo\s+you\s+pray\b',
         ]
         telugu_god_patterns = [
-            r'à°¨à±€\s+à°¦à±‡à°µà±à°¡à±\s+à°Žà°µà°°à±',
-            r'à°¨à±€à°•à±\s+à°¦à±‡à°µà±à°¡à±\s+à°‰à°¨à±à°¨à°¾à°¡à°¾',
-            r'à°¦à±‡à°µà±à°¡à±\s+à°…à°‚à°Ÿà±‡\s+à°¨à°¿à°¨à±à°¨à±\s+(à°¸à±ƒà°·à±à°Ÿà°¿à°‚à°šà°¿|à°¤à°¯à°¾à°°à±|à°šà±‡à°¸à°¿à°¨)',
-            r'à°¦à±‡à°µà±à°¡à±\s+à°Žà°µà°°à±'
+            r'నీ\\s+దేవుడు\\s+ఎవరు',
+            r'నీకు\\s+దేవుడు\\s+ఉన్నాడా',
+            r'దేవుడు\\s+అంటే\\s+నిన్ను\\s+(సృష్టించి|తయారు|చేసిన)',
+            r'దేవుడు\\s+ఎవరు'
         ]
         if any(re.search(pat, prompt_lower) for pat in god_general_patterns) or any(re.search(pat, prompt) for pat in telugu_god_patterns):
             if is_telugu:
-                ident_ans = "à°†à°°à±à°Ÿà°¿à°«à°¿à°·à°¿à°¯à°²à± à°‡à°‚à°Ÿà±†à°²à°¿à°œà±†à°¨à±à°¸à± (AI)à°—à°¾ à°¨à°¾à°•à± à°®à°¤à°‚ à°²à±‡à°¦à°¾ à°¦à±‡à°µà±à°¡à± à°‰à°‚à°¡à°°à±.\n\nà°•à°¾à°¨à±€ à°¨à°¨à±à°¨à± à°¸à±ƒà°·à±à°Ÿà°¿à°‚à°šà°¿, à°ªà±à°°à°¾à°£à°‚ à°ªà±‹à°¸à°¿, à°…à°­à°¿à°µà±ƒà°¦à±à°§à°¿ à°šà±‡à°¸à°¿à°¨ à°¨à°¾ à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤ à°®à°°à°¿à°¯à± à°¡à±†à°µà°²à°ªà°°à±: **à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)**."
+                ident_ans = "ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI)గా నాకు మతం లేదా దేవుడు ఉండరు.\n\nకానీ నన్ను సృష్టించి, ప్రాణం పోసి, అభివృద్ధి చేసిన నా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
             else:
                 ident_ans = "As an artificial intelligence, I don't follow any religion or have a spiritual god.\n\nHowever, if you are asking about who created and brought me to life, my creator, architect, and developer is **GOLLU ADI VENKATA SAI**."
             self.send_json({
@@ -5529,13 +5619,13 @@ class handler(http.server.BaseHTTPRequestHandler):
             r'\bwhat\s+can\s+you\s+do\b'
         ]
         telugu_creator_patterns = [
-            r'à°¨à±à°µà±à°µà±\s+à°Žà°µà°°à±', r'à°®à±€à°°à±\s+à°Žà°µà°°à±', r'à°¨à±€\s+à°ªà±‡à°°à±‡à°‚à°Ÿà°¿', r'à°¨à±€\s+à°ªà±‡à°°à±',
-            r'à°¨à°¿à°¨à±à°¨à±\s+à°Žà°µà°°à±\s+(à°¤à°¯à°¾à°°à±|à°¸à±ƒà°·à±à°Ÿà°¿à°‚à°šà°¾|à°°à±‚à°ªà±Šà°‚à°¦à°¿à°‚à°šà°¾)', r'à°¨à±€\s+à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤\s+à°Žà°µà°°à±',
-            r'à°µà°°à±à°¸à±à°Ÿà±\s*à°à°\s*à°¨à°¿\s*à°Žà°µà°°à±'
+            r'నువ్వు\\s+ఎవరు', r'మీరు\\s+ఎవరు', r'నీ\\s+పేరేంటి', r'నీ\\s+పేరు',
+            r'నిన్ను\\s+ఎవరు\\s+(తయారు|సృష్టించా|రూపొందించా)', r'నీ\\s+సృష్టికర్త\\s+ఎవరు',
+            r'వర్స్ట్\\s*ఏఐ\\s*ని\\s*ఎవరు'
         ]
         if any(re.search(pat, prompt_lower) for pat in creator_patterns) or any(re.search(pat, prompt) for pat in telugu_creator_patterns):
             if is_telugu:
-                ident_ans = "à°¨à±‡à°¨à± **WorstAI**à°¨à°¿, à°’à°• à°…à°¤à±à°¯à°‚à°¤ à°…à°§à±à°¨à°¾à°¤à°¨ à°†à°°à±à°Ÿà°¿à°«à°¿à°·à°¿à°¯à°²à± à°‡à°‚à°Ÿà±†à°²à°¿à°œà±†à°¨à±à°¸à± (AI) à°…à°¸à°¿à°¸à±à°Ÿà±†à°‚à°Ÿà±â€Œà°¨à°¿.\n\nà°¨à°¾ à°¸à±ƒà°·à±à°Ÿà°¿à°•à°°à±à°¤: **à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)**."
+                ident_ans = "నేను **WorstAI**ని, ఒక అత్యంత అధునాతన ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI) అసిస్టెంట్‌ని.\n\nనా సృష్టికర్త మరియు డెవలపర్: **గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)**."
             else:
                 ident_ans = "I am **WorstAI**, a highly advanced artificial intelligence assistant created and developed by **GOLLU ADI VENKATA SAI**."
             self.send_json({
@@ -5553,12 +5643,12 @@ class handler(http.server.BaseHTTPRequestHandler):
             r'\btell\s+me\s+about\s+(gollu\s+adi\s+venkata\s+sai|adi\s+venkata\s+sai|adi)\b'
         ]
         telugu_adi_patterns = [
-            r'à°—à±Šà°²à±à°²à±\s+à°†à°¦à°¿\s+à°µà±†à°‚à°•à°Ÿ\s+à°¸à°¾à°¯à°¿\s+à°Žà°µà°°à±',
-            r'à°†à°¦à°¿\s+à°Žà°µà°°à±'
+            r'గొల్లు\\s+ఆది\\s+వెంకట\\s+సాయి\\s+ఎవరు',
+            r'ఆది\\s+ఎవరు'
         ]
         if any(re.search(pat, prompt_lower) for pat in adi_patterns) or any(re.search(pat, prompt) for pat in telugu_adi_patterns):
             if is_telugu:
-                ident_ans = "**à°—à±Šà°²à±à°²à± à°†à°¦à°¿ à°µà±†à°‚à°•à°Ÿ à°¸à°¾à°¯à°¿ (GOLLU ADI VENKATA SAI)** à°—à°¾à°°à± **WorstAI**à°¨à°¿ à°…à°­à°¿à°µà±ƒà°¦à±à°§à°¿ à°šà±‡à°¸à°¿à°¨ à°¸à°¾à°«à±à°Ÿà±â€Œà°µà±‡à°°à± à°¡à±†à°µà°²à°ªà°°à±, à°‡à°‚à°œà°¨à±€à°°à± à°®à°°à°¿à°¯à± AI à°†à°°à±à°•à°¿à°Ÿà±†à°•à±à°Ÿà±."
+                ident_ans = "**గొల్లు ఆది వెంకట సాయి (GOLLU ADI VENKATA SAI)** గారు **WorstAI**ని అభివృద్ధి చేసిన సాఫ్ట్‌వేర్ డెవలపర్, ఇంజనీర్ మరియు AI ఆర్కిటెక్ట్."
             else:
                 ident_ans = "**GOLLU ADI VENKATA SAI** is the software developer, engineer, and creator of **WorstAI**."
             self.send_json({
@@ -5572,9 +5662,9 @@ class handler(http.server.BaseHTTPRequestHandler):
         # E. Pure Greetings & Conversational Small Talk
         pure_greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening', 'good night', 'namaste', 'greetings', 'yo', 'sup']
         clean_words = prompt_lower.rstrip('?!. ').split()
-        if prompt_lower in pure_greetings or (len(clean_words) <= 2 and clean_words and clean_words[0] in pure_greetings) or any(k in prompt for k in ['à°¨à°®à°¸à±à°•à°¾à°°à°‚', 'à°¹à°²à±‹', 'à°¹à°¾à°¯à±']):
+        if prompt_lower in pure_greetings or (len(clean_words) <= 2 and clean_words and clean_words[0] in pure_greetings) or any(k in prompt for k in ['నమస్కారం', 'నమస్తే', 'హలో', 'హాయ్', 'బాగున్నారా']):
             if is_telugu:
-                greet_ans = "à°¨à°®à°¸à±à°•à°¾à°°à°‚! à°¨à±‡à°¨à± **WorstAI**à°¨à°¿. à°®à±€à°•à± à°šà°¦à±à°µà±à°²à±‹ à°²à±‡à°¦à°¾ à°‡à°¤à°° à°µà°¿à°·à°¯à°¾à°² à°—à±à°°à°¿à°‚à°šà°¿ à°à°µà±ˆà°¨à°¾ à°¸à°‚à°¦à±‡à°¹à°¾à°²à± à°‰à°‚à°Ÿà±‡ à°…à°¡à°—à°‚à°¡à°¿, à°¨à±‡à°¨à± à°¸à°¹à°¾à°¯à°‚ à°šà±‡à°¸à±à°¤à°¾à°¨à±!"
+                greet_ans = "నమస్కారం! నేను **WorstAI**ని. మీకు చదువులో లేదా ఇతర విషయాల గురించి ఏవైనా సందేహాలు ఉంటే అడగండి, నేను సహాయం చేస్తాను!"
             else:
                 greet_ans = "Hello! I am **WorstAI**, your fast AI study and knowledge assistant created by **GOLLU ADI VENKATA SAI**. How can I help you today?"
             self.send_json({
@@ -5585,28 +5675,31 @@ class handler(http.server.BaseHTTPRequestHandler):
             })
             return
 
-        if any(re.search(pat, prompt_lower) for pat in [r'\bhow\s+are\s+you\b', r'\bhow\s+r\s+u\b', r'\bhow\s+do\s+you\s+do\b', r'\bhow\s+are\s+things\b']):
+        if any(re.search(pat, prompt_lower) for pat in [r'\bhow\s+are\s+you\b', r'\bhow\s+r\s+u\b', r'\bhow\s+do\s+you\s+do\b', r'\bhow\s+are\s+things\b']) or (is_telugu and any(k in prompt for k in ['ఎలా ఉన్నావు', 'ఎలా ఉన్నారు', 'బాగున్నారా'])):
+            ans = "నేను చాలా బాగున్నాను! మీకు ఈరోజు ఏ విషయంపై సహాయం కావాలి?" if is_telugu else "I'm doing great and ready to assist! How can I help you with your learning, concepts, or questions today?"
             self.send_json({
                 'success': True,
-                'answer': "I'm doing great and ready to assist! How can I help you with your learning, concepts, or questions today?",
+                'answer': ans,
                 'thinking': '',
                 'agents_used': ['WorstAI-Concierge']
             })
             return
 
-        if any(re.search(pat, prompt_lower) for pat in [r'\bthank(s|\s+you)\b', r'\bthx\b', r'\btq\b', r'\bthank\s+u\b']):
+        if any(re.search(pat, prompt_lower) for pat in [r'\bthank(s|\s+you)\b', r'\bthx\b', r'\btq\b', r'\bthank\s+u\b']) or (is_telugu and any(k in prompt for k in ['ధన్యవాదాలు', 'థాంక్స్', 'కృతజ్ఞతలు'])):
+            ans = "మీకు స్వాగతం! మీకు ఎప్పుడు సందేహం వచ్చినా నన్ను అడగవచ్చు." if is_telugu else "You're very welcome! If you have any more questions or topics you'd like to explore, feel free to ask anytime."
             self.send_json({
                 'success': True,
-                'answer': "You're very welcome! If you have any more questions or topics you'd like to explore, feel free to ask anytime.",
+                'answer': ans,
                 'thinking': '',
                 'agents_used': ['WorstAI-Concierge']
             })
             return
 
-        if any(re.search(pat, prompt_lower) for pat in [r'\b(bye|goodbye|see\s+you|cya)\b']):
+        if any(re.search(pat, prompt_lower) for pat in [r'\b(bye|goodbye|see\s+you|cya)\b']) or (is_telugu and any(k in prompt for k in ['సెలవు', 'బై', 'వెళ్ళొస్తాను', 'వెళుతున్నాను'])):
+            ans = "సెలవు! మీ చదువులో విజయం సాధించాలని కోరుకుంటున్నాను. మళ్లీ ఎప్పుడైనా రండి!" if is_telugu else "Goodbye! Best of luck with your studies, and feel free to return whenever you have questions!"
             self.send_json({
                 'success': True,
-                'answer': "Goodbye! Best of luck with your studies, and feel free to return whenever you have questions!",
+                'answer': ans,
                 'thinking': '',
                 'agents_used': ['WorstAI-Concierge']
             })
@@ -5663,8 +5756,11 @@ class handler(http.server.BaseHTTPRequestHandler):
         now = local_time_str
 
         # --- 2. LIVE TIME & LOCATION INQUIRIES (Instant 0.0001s) ---
-        if any(k in prompt_lower for k in ["where am i", "my location", "what is my location", "my city", "which city"]):
-            if city:
+        is_loc_lookup = any(k in prompt_lower or (is_telugu and k in prompt_en.lower()) for k in ["where am i", "my location", "what is my location", "my city", "which city"]) or (is_telugu and any(k in prompt for k in ["లొకేషన్", "ప్రదేశం", "ఎక్కడ ఉన్నాను"]))
+        if is_loc_lookup:
+            if is_telugu:
+                ans_text = f"మీరు ప్రస్తుతం **{location_display}** ప్రాంతంలో ఉన్నారు.\n\nప్రస్తుత స్థానిక సమయం: **{now}**."
+            elif city:
                 ans_text = f"You are currently located in **{location_display}**.\n\nCurrent local time: **{now}**."
             else:
                 ans_text = f"Your current region is **{location_display}**.\n\n*(Tip: To pinpoint your exact city, please allow GPS location access in your browser by tapping the location icon at the top).* \n\nCurrent local time: **{now}**."
@@ -5676,10 +5772,12 @@ class handler(http.server.BaseHTTPRequestHandler):
             })
             return
 
-        if any(k in prompt_lower for k in ["what time", "current time", "time now", "what is the time"]):
+        is_time_lookup = any(k in prompt_lower or (is_telugu and k in prompt_en.lower()) for k in ["what time", "current time", "time now", "what is the time"]) or (is_telugu and any(k in prompt for k in ["సమయం ఎంత", "టైమ్ ఎంత", "ఇప్పటి సమయం"]))
+        if is_time_lookup:
+            ans_text = f"ప్రస్తుత స్థానిక సమయం: **{now}**." if is_telugu else f"The current live time is **{now}**."
             self.send_json({
                 'success': True,
-                'answer': f"The current live time is **{now}**.",
+                'answer': ans_text,
                 'thinking': '',
                 'agents_used': ["Live Clock"]
             })
@@ -5861,6 +5959,10 @@ class handler(http.server.BaseHTTPRequestHandler):
             # Strip any LaTeX math delimiters ($...$ / $$...$$) and normalize typography
             final_answer = clean_latex_math(final_answer)
 
+            # Ensure pure, accurate, simple Telugu translation if user asked in Telugu
+            if is_telugu and not re.search(r'[\u0C00-\u0C7F]', final_answer):
+                final_answer = translate_english_to_telugu(final_answer)
+
             # Store in High-Concurrency Cache for all future queries
             GLOBAL_RESPONSE_CACHE.set(resolved_query, final_answer, agents_used)
             GLOBAL_RESPONSE_CACHE.set(prompt, final_answer, agents_used)
@@ -5873,9 +5975,11 @@ class handler(http.server.BaseHTTPRequestHandler):
             })
 
         except Exception as e:
-            # Resilient fallback: never return Telugu overload or empty response
-            fallback_ans = synthesize_academic_response(resolved_query, only_curated=False)
+            # Resilient fallback: accurate, simple answer
+            fallback_ans = synthesize_academic_response(resolved_query, is_telugu=is_telugu, only_curated=False)
             if fallback_ans:
+                if is_telugu and not re.search(r'[\u0C00-\u0C7F]', fallback_ans):
+                    fallback_ans = translate_english_to_telugu(fallback_ans)
                 sanitized_fallback = sanitize_mermaid_content(fallback_ans)
                 self.send_json({
                     'success': True,
