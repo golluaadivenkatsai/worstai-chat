@@ -982,8 +982,9 @@ def translate_telugu_to_english(text: str) -> str:
     if not text or not re.search(r'[\u0C00-\u0C7F]', text):
         return text
     try:
-        url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=te&tl=en&dt=t&q=" + urllib.parse.quote(text)
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        post_url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=te&tl=en&dt=t"
+        post_data = urllib.parse.urlencode({'q': text}).encode('utf-8')
+        req = urllib.request.Request(post_url, data=post_data, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
         with urllib.request.urlopen(req, timeout=3.5) as res:
             data = json.loads(res.read().decode('utf-8'))
             en = ''.join(c[0] for c in data[0] if c and c[0]).strip()
@@ -1013,9 +1014,10 @@ def translate_english_to_telugu(text: str) -> str:
             if not ch:
                 return []
             joined = '\n'.join(ch)
-            url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=te&dt=t&q=" + urllib.parse.quote(joined)
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-            with urllib.request.urlopen(req, timeout=4.5) as res:
+            post_url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=te&dt=t"
+            post_data = urllib.parse.urlencode({'q': joined}).encode('utf-8')
+            req = urllib.request.Request(post_url, data=post_data, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+            with urllib.request.urlopen(req, timeout=4.0) as res:
                 data = json.loads(res.read().decode('utf-8'))
                 trans = ''.join(c[0] for c in data[0] if c and c[0])
                 return trans.split('\n')
