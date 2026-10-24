@@ -1135,12 +1135,12 @@ def run_web_research(query, location_context=''):
         # 1. Race the search engines to find URLs & snippets instantly
         executor1 = concurrent.futures.ThreadPoolExecutor(max_workers=len(search_engines))
         futures = {executor1.submit(engine, search_query, 4): engine for engine in search_engines}
-        for future in concurrent.futures.as_completed(futures, timeout=2.5):
+        for future in concurrent.futures.as_completed(futures, timeout=1.0):
             try:
                 res = future.result()
                 if res:
                     search_results.extend(res)
-                    if len(search_results) >= 4:
+                    if len(search_results) >= 2:
                         break
             except Exception:
                 continue
@@ -1151,6 +1151,11 @@ def run_web_research(query, location_context=''):
             if s and len(s) > 25:
                 domain = re.sub(r'https?://(www\.)?', '', u).split('/')[0]
                 findings.append(f'[{domain} Snippet]\n{s}')
+
+        # If we already have verified search snippets, return immediately (sub-second latency!)
+        if len(findings) >= 2:
+            brief = '\n\n---\n\n'.join(findings[:4])
+            return f'RESEARCH FINDINGS (sourced from live web search):\n\n{brief}'
                     
         # 2. Run all heavy research tasks simultaneously
         def fetch_wiki():
@@ -4554,6 +4559,235 @@ def _synthesize_academic_response_en(prompt, is_telugu=False, only_curated=False
                 "Only a licensed CA has the legal power in India to sign and verify company balance sheets, audits, and tax filings."
             )
 
+
+    # 69. Documents Required for GST Registration (Partnership Firm, Proprietorship, LLP, Pvt Ltd)
+    if any(re.search(pat, q) for pat in [
+        r'\bdocuments? required for gst\b', r'\bgst documents? required\b', r'\bdocuments? for gst registration\b',
+        r'\bgst registration documents?\b', r'\bdocuments? needed for gst\b', r'\bpapers required for gst\b'
+    ]) or any(k in q for k in [
+        'documents required for gst registration for partnership', 'documents for partnership gst',
+        'partnership gst documents', 'gst documents for partnership firm', 'documents required for partnership gst'
+    ]):
+        is_partnership = any(k in q for k in ['partnership', 'partner', 'firm'])
+        if is_partnership:
+            return (
+                "### Documents Required for GST Registration of a Partnership Firm\n\n"
+                "Here is the official document checklist required to register a Partnership Firm on the GST Portal (`https://www.gst.gov.in`):\n\n"
+                "#### 1. Partnership Firm Documents\n"
+                "- **Partnership Deed**: Notarized or registered copy of the Partnership Deed signed by all partners (PDF/JPEG, max 1 MB).\n"
+                "- **PAN Card of the Partnership Firm**: Official PAN card issued in the name of the partnership firm (PDF/JPEG, max 100 KB).\n\n"
+                "#### 2. Documents for All Partners\n"
+                "- **PAN Card** of every partner.\n"
+                "- **Identity & Address Proof**: Aadhaar Card, Passport, or Voter ID for each partner.\n"
+                "- **Photographs**: Passport-size color photograph of each partner (JPEG, max 100 KB).\n\n"
+                "#### 3. Authorized Signatory Documents\n"
+                "- **Letter of Authorization / Partnership Resolution**: Declaration signed by all partners authorizing one partner to act as Authorized Signatory.\n"
+                "- **PAN & Aadhaar Card** of the authorized partner.\n"
+                "- **Passport-size Photograph** of the authorized signatory.\n\n"
+                "#### 4. Proof of Principal Place of Business\n"
+                "- **If Rented / Leased Premises**:\n"
+                "  - Valid Rent / Lease Agreement.\n"
+                "  - Latest Electricity Bill, Landline Bill, Water Bill, or Municipal Tax Receipt (not older than 2 months).\n"
+                "  - **NOC (No Objection Certificate)** signed by the property owner.\n"
+                "- **If Owned Premises**:\n"
+                "  - Property Title Deed / Municipal Khata copy + latest Electricity Bill.\n"
+                "- **If Shared / Consent Premises**:\n"
+                "  - Consent letter from property owner + latest Electricity Bill.\n\n"
+                "#### 5. Bank Account Proof (in Firm Name)\n"
+                "- First page of Bank Passbook, recent Bank Account Statement, or Cancelled Cheque showing Firm Name, Account Number, and IFSC code.\n"
+                "*(Note: Under current GST rules, bank account details can also be uploaded within 30 days of registration approval).* "
+            )
+        else:
+            return (
+                "### Documents Required for GST Registration (General Checklist)\n\n"
+                "#### 1. Identity & Address Proof of Promoters / Owner\n"
+                "- **PAN Card** of proprietor, partners, or directors.\n"
+                "- **Aadhaar Card**, Passport, or Voter ID.\n"
+                "- **Passport-size Photograph** (JPEG, max 100 KB).\n\n"
+                "#### 2. Business Entity Proof\n"
+                "- **Proprietorship**: PAN of proprietor + Shop Act / Udyam Certificate (if available).\n"
+                "- **Partnership Firm**: Partnership Deed + PAN card of the firm.\n"
+                "- **Company / LLP**: Certificate of Incorporation + PAN of company + MOA/AOA or LLP Agreement + Board Resolution.\n\n"
+                "#### 3. Proof of Principal Place of Business\n"
+                "- **Rented**: Rent Agreement + latest Electricity Bill + NOC from property owner.\n"
+                "- **Owned**: Title Deed / Municipal Tax Receipt + latest Electricity Bill.\n\n"
+                "#### 4. Bank Account Details\n"
+                "- Cancelled Cheque, first page of Bank Passbook, or Bank Statement showing Business Name, Account Number, and IFSC code.\n\n"
+                "#### 5. Authorized Signatory Proof\n"
+                "- Letter of Authorization or Board Resolution authorizing the signatory."
+            )
+
+    # 70. How to File GST / Return Filing (GSTR-1, GSTR-3B)
+    if any(re.search(pat, q) for pat in [
+        r'\bhow to file gst\b', r'\bhow do i file gst\b', r'\bgst filing\b', r'\bfile gst return\b',
+        r'\bhow to file gst return\b', r'\bgst return filing process\b', r'\bhow to file gstr\b',
+        r'\bgstr-1 filing\b', r'\bgstr 1 filing\b', r'\bgstr-3b filing\b', r'\bgstr 3b filing\b',
+        r'\bhow to file gstr-1\b', r'\bhow to file gstr 1\b', r'\bhow to file gstr-3b\b'
+    ]) or any(k in q for k in [
+        'how to file gst', 'how to file gst online', 'how to file gst returns', 'step by step gst filing',
+        'process of gst filing', 'how can i file gst', 'filing gst return online'
+    ]):
+        return (
+            "### How to File GST Returns Online (Step-by-Step Guide)\n\n"
+            "Filing GST returns in India is done entirely online through the official GST Portal (`https://www.gst.gov.in`). Here is the step-by-step process:\n\n"
+            "#### Step 1: Login to the GST Portal\n"
+            "1. Visit **`https://www.gst.gov.in`** and click **Login**.\n"
+            "2. Enter your 15-character **Username**, **Password**, and Captcha code.\n\n"
+            "#### Step 2: Open Returns Dashboard\n"
+            "1. From the navigation menu, go to **Services > Returns > Returns Dashboard** (or click *Return Dashboard* on your home screen).\n"
+            "2. Select the **Financial Year** and **Return Filing Period** (Month or Quarter) and click **Search**.\n\n"
+            "#### Step 3: File GSTR-1 (Outward Supplies / Sales Invoices)\n"
+            "1. Click **Prepare Online** under **GSTR-1** (or upload via offline JSON tool if using accounting software like Tally/Zoho).\n"
+            "2. Enter your sales data across relevant invoice tables:\n"
+            "   - **Table 4A (B2B Invoices)**: Sales made to registered GST taxpayers.\n"
+            "   - **Table 5A (B2C Large)**: Inter-state sales to consumers above ₹2.5 Lakh.\n"
+            "   - **Table 7 (B2C Others)**: Small intra-state and retail consumer sales.\n"
+            "   - **Table 9B (Credit / Debit Notes)**: Notes issued against sales.\n"
+            "   - **Table 12 (HSN Summary)**: Summary of supplies categorized by HSN/SAC codes.\n"
+            "3. Click **Generate Summary**, verify your invoice totals, check the declaration box, and click **Submit**.\n"
+            "4. Click **File Return** and authenticate using:\n"
+            "   - **EVC (Electronic Verification Code)**: OTP sent to the registered mobile number.\n"
+            "   - **DSC (Digital Signature Certificate)**: Mandatory for Companies and LLPs.\n"
+            "- *Due Date:* **11th of each succeeding month** (or 13th for QRMP quarterly filers).\n\n"
+            "#### Step 4: Verify Input Tax Credit (ITC) in GSTR-2B\n"
+            "1. Before filing GSTR-3B, open **GSTR-2B** from the Returns Dashboard.\n"
+            "2. GSTR-2B is an auto-generated static statement showing all eligible ITC based on invoices filed by your suppliers by their due date.\n\n"
+            "#### Step 5: File GSTR-3B (Summary Return & Tax Payment)\n"
+            "1. Click **Prepare Online** under **GSTR-3B** in the Returns Dashboard.\n"
+            "2. Review the auto-populated fields:\n"
+            "   - Outward taxable supplies (auto-fetched from your filed GSTR-1).\n"
+            "   - Eligible Input Tax Credit (auto-fetched from GSTR-2B).\n"
+            "3. Click **Proceed to Payment**:\n"
+            "   - If your available ITC is sufficient to cover your outward liability, offset it directly.\n"
+            "   - If there is a net cash tax liability, click **Create Challan** and pay via Net Banking, NEFT/RTGS, or UPI.\n"
+            "4. Click **Make Payment / Post Credit to Ledger** to offset liabilities.\n"
+            "5. Select the Authorized Signatory, check the declaration, and click **File GSTR-3B with EVC / DSC**.\n"
+            "- *Due Date:* **20th of the following month** (or 22nd/24th for QRMP filers).\n\n"
+            "#### Step 6: Confirmation\n"
+            "An **ARN (Application Reference Number)** will be instantly generated and sent to your registered email and mobile, confirming successful filing."
+        )
+
+    # 71. How to Do GST Registration (New Registration Online Process)
+    if any(re.search(pat, q) for pat in [
+        r'\bhow to do gst registration\b', r'\bhow to register for gst\b', r'\bgst registration process\b',
+        r'\bnew gst registration\b', r'\bhow to apply for gst\b', r'\bapply for gst registration\b',
+        r'\bonline gst registration process\b', r'\bhow to get gst number\b', r'\bhow to get gst\b'
+    ]) or any(k in q for k in [
+        'how to do gst registration', 'how to register in gst', 'process of gst registration',
+        'steps for gst registration', 'apply for new gst', 'how to register for gst online'
+    ]):
+        return (
+            "### How to Complete GST Registration Online (Step-by-Step Guide)\n\n"
+            "GST Registration in India is 100% online, free of government fees, and completed on the official GST Portal (`https://www.gst.gov.in`). Here is the complete process:\n\n"
+            "#### Part A: Generate Temporary Reference Number (TRN)\n"
+            "1. Visit **`https://www.gst.gov.in`** and go to **Services > Registration > New Registration**.\n"
+            "2. Under the **New Registration** tab, select:\n"
+            "   - **I am a**: *Taxpayer*\n"
+            "   - **State / UT** and **District** of your business.\n"
+            "3. Enter:\n"
+            "   - **Legal Name of the Business** (must match PAN exactly).\n"
+            "   - **Permanent Account Number (PAN)** of the business or proprietor.\n"
+            "   - **Email Address** and **Mobile Number** of the primary authorized person.\n"
+            "4. Enter the captcha code and click **Proceed**.\n"
+            "5. Enter the two separate OTPs received on your mobile and email.\n"
+            "6. A 15-digit **TRN (Temporary Reference Number)** will be generated and sent to your phone and email.\n\n"
+            "#### Part B: Fill Application Form (Form GST REG-01)\n"
+            "1. Return to **Services > Registration > New Registration**, select **Temporary Reference Number (TRN)**, enter your TRN and captcha, and verify with OTP.\n"
+            "2. Under the *My Saved Applications* table, click the **Action (Pencil)** icon to open the application. Complete each of the 10 tabs:\n"
+            "   - **Business Details**: Enter Trade Name, Constitution of Business (Proprietorship, Partnership, Private Limited, etc.), Reason for Registration (e.g. crossing threshold turnover or voluntary), and Date of Commencement.\n"
+            "   - **Promoters / Partners / Directors**: Personal details, designation, residential address, PAN, and upload passport photo (JPEG, max 100 KB).\n"
+            "   - **Authorized Signatory**: Designate the authorized signatory, contact details, and upload Letter of Authorization / Board Resolution.\n"
+            "   - **Principal Place of Business**: Full postal address, jurisdiction (Center & State wards), nature of business activity, and upload address proof (Electricity bill + Rent Agreement & NOC if rented; Property deed if owned).\n"
+            "   - **Goods and Services (HSN / SAC)**: Search and specify up to 5 top goods (HSN code) or services (SAC code) your business provides.\n"
+            "   - **Bank Account**: Provide Bank Account Number, IFSC code, and upload first page of Bank Passbook, Bank Statement, or Cancelled Cheque.\n"
+            "   - **Aadhaar Authentication**: Opt for Aadhaar authentication for the primary promoter/authorized signatory. *(Highly recommended: Aadhaar authentication enables automatic fast approval without physical inspection).*\n\n"
+            "#### Part C: Verification & Submission\n"
+            "1. Check the verification declaration box, select the Authorized Signatory from the dropdown, and enter the Place.\n"
+            "2. Submit the form using:\n"
+            "   - **Submit with EVC**: Enter the Aadhaar OTP sent to the authorized signatory's mobile (valid for Proprietorship, Partnerships, Individuals).\n"
+            "   - **Submit with DSC**: Mandatory for Private Limited Companies and LLPs.\n"
+            "3. An **ARN (Application Reference Number)** is issued via email/SMS within 15 minutes.\n"
+            "4. The GST department reviews the application. If verified without queries, your **15-digit GSTIN** and Registration Certificate (Form GST REG-06) are granted within **7 working days**."
+        )
+
+    # 72. TDS Form 140 & Official Indian TDS Forms
+    if any(re.search(pat, q) for pat in [
+        r'\btds form 140\b', r'\bform 140 tds\b', r'\bform 140 in tds\b', r'\btds 140\b',
+        r'\bwhat is tds form 140\b', r'\bform 140 income tax\b'
+    ]) or any(k in q for k in ['tds form 140', 'form 140 tds', 'form 140 in tds', 'what is form 140 in tds']):
+        return (
+            "### Clarification on 'TDS Form 140' & Official Indian TDS Forms\n\n"
+            "**There is no official income tax form designated as 'TDS Form 140' under the Indian Income Tax Act or TDS rules.**\n\n"
+            "If you are looking for TDS filing forms, payment challans, or certificates in India, here is the complete official list:\n\n"
+            "#### 1. Official Quarterly TDS Return Forms\n"
+            "- **Form 24Q**: Quarterly return for **TDS on Salary** payments (under Section 192).\n"
+            "- **Form 26Q**: Quarterly return for **TDS on all Non-Salary payments** to resident Indians (e.g., contractor payments u/s 194C, rent u/s 194I, professional fees u/s 194J, commission u/s 194H, interest u/s 194A).\n"
+            "- **Form 27Q**: Quarterly return for **TDS on payments to Non-Residents (NRIs)** and foreign entities.\n"
+            "- **Form 27EQ**: Quarterly return for **TCS (Tax Collected at Source)**.\n\n"
+            "#### 2. Official TDS Payment Challan\n"
+            "- **Challan ITNS 281**: The official challan used by deductors to deposit TDS/TCS online through the e-Filing portal or at authorized banks.\n\n"
+            "#### 3. Official TDS Certificates Issued to Deductees\n"
+            "- **Form 16**: Annual certificate issued by employers to employees showing salary paid and tax deducted.\n"
+            "- **Form 16A**: Quarterly certificate issued for non-salary TDS deductions (rent, contracts, interest, professional fees).\n"
+            "- **Form 16B**: TDS certificate for property purchases (under Section 194-IA).\n"
+            "- **Form 16C**: TDS certificate for rent paid by individuals/HUFs (under Section 194-IB).\n\n"
+            "#### 4. Possible Sources of Confusion with 'Form 140'\n"
+            "- **Income Tax Rule 140**: Relates to administrative notices, assessment appeals, or valuation rules, not a TDS filing form.\n"
+            "- **US State Tax Form 140**: In the United States, Form 140 is the Resident Personal Income Tax Return for the State of Arizona.\n"
+            "- **ITR Acknowledgment (ITR-V)**: Sometimes individuals confuse tax acknowledgment sequence numbers with TDS form numbers.\n\n"
+            "For general commercial and business TDS filing in India, **Form 26Q** (non-salary) and **Form 24Q** (salary) are filed quarterly on the TRACES portal (`https://www.tdscpc.gov.in`)."
+        )
+
+    # 73. What is GST & Types of GST (Only when definition or types explicitly requested)
+    if any(re.search(pat, q) for pat in [
+        r'\bwhat is gst\b', r'\bdefine gst\b', r'\bdefinition of gst\b', r'\btypes of gst\b',
+        r'\bgst definition\b', r'\bmeaning of gst\b', r'\bexplain gst\b', r'\bconcept of gst\b'
+    ]) and not any(k in q for k in ['file', 'filing', 'registration', 'register', 'document', 'documents', 'penalty', 'portal', 'login']):
+        is_types_q = any(k in q for k in ['types', 'kinds', 'classification', 'categories'])
+        if is_types_q:
+            return (
+                "### Types of GST in India\n\n"
+                "In India's dual GST model, GST is categorized into 4 types based on supply destination:\n\n"
+                "1. **CGST (Central Goods and Services Tax)**:\n"
+                "   - Levied by the Central Government on **intra-state** transactions (supplies within the same state).\n"
+                "2. **SGST (State Goods and Services Tax)**:\n"
+                "   - Levied by the respective State Government on **intra-state** transactions.\n"
+                "   *(For example, on an intra-state sale with 18% GST, 9% goes to CGST and 9% goes to SGST).*\n"
+                "3. **IGST (Integrated Goods and Services Tax)**:\n"
+                "   - Levied by the Central Government on **inter-state** transactions (supplies from one state to another) as well as imports and exports. The tax collected is apportioned between the Center and the destination state.\n"
+                "4. **UTGST (Union Territory Goods and Services Tax)**:\n"
+                "   - Levied on intra-state supplies within Union Territories without a legislature (e.g. Chandigarh, Andaman & Nicobar, Ladakh, Lakshadweep, Daman & Diu)."
+            )
+        return (
+            "### What is GST (Goods and Services Tax)?\n\n"
+            "**GST (Goods and Services Tax)** is a comprehensive, multi-stage, destination-based indirect tax levied on the manufacture, sale, and consumption of goods and services throughout India.\n\n"
+            "### Key Highlights:\n"
+            "- **One Nation, One Tax**: Subsumed multiple indirect taxes (Excise Duty, VAT, Service Tax, Octroi, and Entry Tax) into a unified system on July 1, 2017.\n"
+            "- **Destination-Based**: Tax is collected by the state where goods or services are consumed, rather than where they are manufactured.\n"
+            "- **Input Tax Credit (ITC)**: Businesses can offset the GST paid on purchases against the GST collected on sales, preventing the cascading 'tax-on-tax' effect.\n"
+            "- **Standard Tax Slabs**: Supplies are taxed under 0%, 5%, 12%, 18%, and 28% slabs (with luxury/sin goods attracting an additional compensation cess)."
+        )
+
+    # 74. What is TDS & Types of TDS (Only when definition or types explicitly requested)
+    if any(re.search(pat, q) for pat in [
+        r'\bwhat is tds\b', r'\bdefine tds\b', r'\bdefinition of tds\b', r'\btypes of tds\b',
+        r'\btds definition\b', r'\bmeaning of tds\b', r'\bexplain tds\b', r'\bconcept of tds\b'
+    ]) and not any(k in q for k in ['form 140', 'file', 'filing', 'challan', 'return', 'portal', 'login', 'exempt']):
+        return (
+            "### What is TDS (Tax Deducted at Source)?\n\n"
+            "**TDS (Tax Deducted at Source)** is an indirect tax collection mechanism introduced under the Indian Income Tax Act, 1961, where tax is deducted at the exact point where income or payment is generated.\n\n"
+            "### How It Works:\n"
+            "1. **The Deductor**: The entity or individual making a specified payment (like an employer paying salary or a company paying rent/fees) deducts a certain percentage as tax before transferring the balance to the recipient.\n"
+            "2. **Government Deposit**: The deductor deposits the deducted tax amount directly with the Central Government using Challan ITNS 281.\n"
+            "3. **The Deductee (Recipient)**: The person receiving the income receives the net payment plus a TDS Certificate (Form 16 or 16A), and claims full credit for the deducted tax when filing their annual Income Tax Return (ITR).\n\n"
+            "### Common TDS Sections & Thresholds:\n"
+            "- **Section 192**: Salary (deducted based on applicable income tax slab rates).\n"
+            "- **Section 194C**: Payments to Contractors (1% for individuals/HUFs, 2% for other entities if payment exceeds ₹30,000 single or ₹1,00,000 aggregate).\n"
+            "- **Section 194J**: Fees for Professional / Technical Services (10% or 2% for technical fees if payment exceeds ₹30,000/year).\n"
+            "- **Section 194I**: Rent (10% on land/building if rent exceeds ₹2,40,000/year; 2% on plant & machinery).\n"
+            "- **Section 194A**: Interest other than securities (10% if bank interest exceeds ₹40,000 for regular individuals or ₹50,000 for senior citizens)."
+        )
+
     if only_curated:
         return None
 
@@ -4652,6 +4886,16 @@ def _synthesize_academic_response_en(prompt, is_telugu=False, only_curated=False
             continue
         score += overlap_count * 2.5
 
+        # Noise filter for Tax / TDS / GST queries to reject acronym false positives (touchdowns, Irish politics, etc.)
+        is_tax_query = any(k in q_low for k in ['gst', 'tds', 'tax', 'itr', 'challan', 'income tax', 'vat', 'form 140', 'return', 'partnership'])
+        if is_tax_query:
+            if any(junk in s_low for junk in [
+                'touchdown', 'touchdowns', 'chiefs', 'steelers', 'nfl', 'quarterback', 'buccaneers',
+                'patriots', 'eagles', 'packers', 'passing', 'interception', 'yards and', 'tds from',
+                'dáil', 'leinster house', 'fine gael', 'fianna fáil', 'teachta', 'gosu', '.gsp', '.gst file'
+            ]):
+                continue
+
         if is_release_query:
             if any(k in s_low for k in ['release', 'scheduled', 'launch', 'delayed', 'window', 'date']):
                 score += 5.0
@@ -4690,16 +4934,7 @@ def _synthesize_academic_response_en(prompt, is_telugu=False, only_curated=False
         if wiki_search_snippets:
             best_sentences = wiki_search_snippets[:3]
         else:
-            return (
-                f"## {clean_title}\n\n"
-                f"### 1. Definition\n"
-                f"**{clean_title}** refers to an important academic, professional, or technical subject.\n\n"
-                f"### 2. Key Details & Status\n"
-                f"- Current verified records are being processed for this specific query.\n"
-                f"- If this refers to a specific national examination, syllabus, or technical protocol, please provide the full title or exam board for instant detailed coverage!\n\n"
-                f"### 3. Exam & Study Tip\n"
-                f"Always check official notifications for exact dates, eligibility criteria, and syllabus updates."
-            )
+            return f"I could not locate verified official records for **{clean_title}**. Please check the spelling or provide more specific details."
 
     lead_answer = best_sentences[0]
     lead_answer = re.sub(r'^(?:[A-Za-z]+\s+\d{1,2},?\s+\d{4}\s+)?(?:hi|hello|hey)\s+(?:everyone|guys|all|folks|there)[,:\s]+', '', lead_answer, flags=re.IGNORECASE).strip()
@@ -4721,51 +4956,108 @@ def _synthesize_academic_response_en(prompt, is_telugu=False, only_curated=False
                 f"| **Best Used When** | Direct, specialized use cases | Alternative or complementary scenarios |\n"
             )
 
-    # Format Output: Standardized Academic Study Layout for all educational & conceptual topics
+    # Format Output: Strictly answer what was asked!
+    # ONLY provide Definition or Classification when user explicitly asks for them!
     out_parts = []
-    is_study_topic = not is_direct_question or any(k in q_low for k in [
-        'what is', 'explain', 'describe', 'how does', 'types of', 'difference', 'concept', 'definition',
-        'study', 'algorithm', 'system', 'process', 'science', 'engineering', 'exam', 'theory'
+
+    # 1. Did the user EXPLICITLY ask for definition?
+    is_def_requested = any(k in q_low for k in [
+        'definition of', 'define ', 'define', 'meaning of', 'what is the definition of',
+        'what does it mean', 'concept of', 'explain what is'
     ])
-    if is_study_topic:
-        out_parts.append(f"## {clean_title}\n\n")
-        out_parts.append(f"### 1. Definition\n{lead_answer}\n\n---\n\n")
-        out_parts.append(f"### 2. Types & Classifications of {clean_title}\n")
-        details = best_sentences[1:4]
+
+    # 2. Did the user EXPLICITLY ask for types or classification?
+    is_class_requested = any(k in q_low for k in [
+        'types of', 'kinds of', 'classification of', 'classify', 'categories of',
+        'what are the types', 'what are the kinds', 'different types', 'list types'
+    ])
+
+    # 3. Did the user ask for procedural "how to" / steps?
+    is_how_to = any(k in q_low for k in [
+        'how to', 'how do i', 'how can i', 'how does one', 'steps to', 'step by step',
+        'procedure to', 'process of', 'guide to', 'method to', 'way to'
+    ])
+
+    # 4. Did the user ask for checklist / documents / eligibility?
+    is_checklist = any(k in q_low for k in [
+        'documents required', 'document required', 'required documents', 'documents needed',
+        'papers required', 'checklist', 'what documents', 'eligibility', 'requirements for',
+        'what do i need to', 'what is needed for'
+    ])
+
+    # 5. Did the user ask for comparison?
+    is_comparison = comp_table != ""
+
+    # 6. Did the user ask for exam / study memory tips?
+    is_exam_requested = any(k in q_low for k in [
+        'exam tip', 'memory tip', 'gate tip', 'study tip', 'exam trick', 'memorize', 'for exams'
+    ])
+
+    details = best_sentences[1:4]
+
+    if is_def_requested or is_class_requested:
+        # ONLY when user explicitly asks definition and/or classifications!
+        if is_def_requested:
+            out_parts.append(f"### Definition\n{lead_answer}\n\n")
+        else:
+            out_parts.append(f"{lead_answer}\n\n")
+
+        if is_class_requested:
+            out_parts.append(f"### Types & Classifications\n")
+            if details:
+                for d in details:
+                    out_parts.append(f"- {d}\n")
+            else:
+                out_parts.append(f"- Standard classifications and operational categories.\n")
+            out_parts.append("\n")
+
+        if is_comparison and comp_table:
+            out_parts.append(comp_table + "\n\n")
+
+    elif is_how_to:
+        # Procedural: Clean step-by-step guidance
+        out_parts.append(f"### {clean_title} (Step-by-Step Guide)\n\n")
+        out_parts.append(f"{lead_answer}\n\n")
         if details:
+            out_parts.append("### Key Steps:\n")
             for i, d in enumerate(details, 1):
-                out_parts.append(f"- **Classification {i}**: {d}\n")
-        else:
-            out_parts.append(f"- **Fundamental / Standard Model**: Core theoretical and operational implementation of {clean_title}.\n")
-            out_parts.append(f"- **Specialized / Advanced Model**: Extended architectures adapted for high-scale applications.\n")
-        out_parts.append("\n---\n\n")
-        if comp_table:
-            out_parts.append(comp_table + "\n\n---\n\n")
-        out_parts.append(f"### 3. How It Works & Key Details\n")
+                out_parts.append(f"{i}. {d}\n")
+            out_parts.append("\n")
+
+    elif is_checklist:
+        # Checklist: Bulleted requirements
+        out_parts.append(f"### {clean_title}\n\n")
+        out_parts.append(f"{lead_answer}\n\n")
         if details:
+            out_parts.append("### Required Checklist / Details:\n")
             for d in details:
                 out_parts.append(f"- {d}\n")
-        else:
-            out_parts.append(f"- Operates systematically based on established academic and technical principles.\n")
-        out_parts.append("\n---\n\n")
-        out_parts.append(f"### 4. Real-World Application & Concept\n- In real-world computing, study, and practical applications, **{clean_title}** provides essential functionality and foundational principles.\n\n---\n\n")
-        out_parts.append(f"### 5. High-Yield Exam Memory Tip\n- Focus on the core definition, key classification criteria, and primary trade-offs when preparing for exams and interviews.")
-    elif is_direct_question:
-        out_parts.append(f"**{lead_answer}**\n")
-        details = best_sentences[1:4]
+            out_parts.append("\n")
+
+    elif is_comparison:
+        out_parts.append(f"{lead_answer}\n\n")
+        out_parts.append(comp_table + "\n\n")
         if details:
-            out_parts.append("\n### Key Details\n")
+            out_parts.append("### Key Details:\n")
             for d in details:
                 out_parts.append(f"- {d}\n")
+            out_parts.append("\n")
+
     else:
-        out_parts.append(f"## {clean_title}\n\n{lead_answer}\n")
-        if comp_table:
-            out_parts.append(comp_table)
-        details = best_sentences[1:4]
+        # General case: Answer the question directly!
+        if is_direct_question:
+            out_parts.append(f"**{lead_answer}**\n\n")
+        else:
+            out_parts.append(f"{lead_answer}\n\n")
+
         if details:
-            out_parts.append("\n### Key Details\n")
+            out_parts.append("### Key Details:\n")
             for d in details:
                 out_parts.append(f"- {d}\n")
+            out_parts.append("\n")
+
+    if is_exam_requested:
+        out_parts.append("\n### High-Yield Exam Memory Tip\nFocus on the core definitions, standard formulas, and primary trade-offs when preparing for exams.")
 
     return "".join(out_parts).strip()
 
@@ -4871,7 +5163,7 @@ def get_ai_response(messages, last_user_message, is_voice=False):
                     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
                 }
             )
-            with urllib.request.urlopen(req, timeout=2.0) as res:
+            with urllib.request.urlopen(req, timeout=1.2) as res:
                 chunks = []
                 for chunk in res:
                     if chunk:
@@ -4910,7 +5202,7 @@ def get_ai_response(messages, last_user_message, is_voice=False):
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
                 }
             )
-            with urllib.request.urlopen(req, timeout=2.0) as res:
+            with urllib.request.urlopen(req, timeout=1.2) as res:
                 raw_text = res.read().decode('utf-8', errors='replace').strip()
                 ans = raw_text
                 try:
@@ -4937,7 +5229,7 @@ def get_ai_response(messages, last_user_message, is_voice=False):
         executor.submit(call_pollinations): 'pollinations'
     }
     try:
-        for future in concurrent.futures.as_completed(futures, timeout=2.2):
+        for future in concurrent.futures.as_completed(futures, timeout=1.2):
             try:
                 res = future.result()
                 executor.shutdown(wait=False, cancel_futures=True)
@@ -5899,18 +6191,27 @@ class handler(http.server.BaseHTTPRequestHandler):
             f'- Answer the user\'s specific question directly, perfectly, and accurately without adding unrequested topics, unsolicited essays, or filler.\n'
             f'- Keep all explanations in simple, everyday plain English that is effortlessly understood by any student or reader.\n'
             f'- Avoid dense, confusing jargon. Keep sentences clear, concise, and easy to read.\n\n'
-            f'1. STUDY & ACADEMIC TOPICS (When asked about a study, science, or technical concept like AI, ML, OS, DBMS, DAA, etc.):\n'
-            f'   - 1. Definition: "### 1. Definition" -> 1-2 sentence simple, clear definition in plain English.\n'
-            f'   - 2. Types: "### 2. Types of [Topic]" -> Simple list or table of the main types with 1 clear line each.\n'
-            f'   - 3. How It Works: "### 3. Key Components / How It Works" -> 3-4 simple, easy-to-read bullet points.\n'
-            f'   - 4. Everyday Example: "### 4. Simple Real-World Example" -> An easy everyday analogy or application.\n'
-            f'   - Stop right there. Do NOT add unnecessary extra sections or pages of unasked text.\n\n'
-            f'2. DIRECT FACTUAL / SPECIFIC QUESTIONS (Exam dates, timetables, names, facts, code, math):\n'
-            f'   - Give the EXACT direct answer immediately. For example, if asked "when was/is the CMA exam", state the exact schedule and dates clearly.\n'
-            f'   - Do NOT add unrelated history or unsolicited study outlines when the user only asked for a specific fact or date.\n\n'
-            f'3. CODING REQUESTS:\n'
+            f'CRITICAL RULE: ANSWER ONLY WHAT USER ASKED — NOT MORE, NOT LESS.\n'
+            f'- Answer the user\'s specific question directly, perfectly, and accurately without adding unrequested topics, unsolicited essays, or filler.\n'
+            f'- ONLY provide "Definition" or "Types / Classifications" if the user EXPLICITLY asks for a definition, types, or classification (e.g. "define X", "what is the definition of X", "types of X", "classify X").\n'
+            f'- If the user asks a procedural question ("how to file gst", "how to register", "how to do X", "steps for X"), provide a clear, practical, step-by-step guide with numbered steps (Step 1, Step 2...).\n'
+            f'- If the user asks for requirements or documents ("documents required for X", "checklist for X"), provide a clean, organized bulleted checklist.\n'
+            f'- If the user asks for specific dates, forms, names, or facts, answer with the exact factual details immediately.\n'
+            f'- Keep all explanations in simple, everyday plain English that is effortlessly understood by any student or reader.\n'
+            f'- Avoid dense, confusing jargon. Keep sentences clear, concise, and easy to read.\n\n'
+            f'1. PROCEDURAL & HOW-TO QUESTIONS:\n'
+            f'   - Provide clear, numbered steps explaining exactly how to perform the action.\n'
+            f'   - Do NOT include unasked definitions, academic classifications, or exam tips.\n\n'
+            f'2. CHECKLISTS & DOCUMENT REQUIREMENTS:\n'
+            f'   - Provide an organized bulleted checklist of required documents/prerequisites.\n\n'
+            f'3. DIRECT FACTUAL / SPECIFIC QUESTIONS (Forms, Exam dates, timetables, names, facts, code, math):\n'
+            f'   - Give the EXACT direct answer immediately. For example, if asked "tds form 140", explain that no such form exists and list the actual TDS forms (24Q, 26Q, etc.).\n'
+            f'   - Do NOT add unrelated history or unsolicited outlines when the user only asked for a specific fact or form.\n\n'
+            f'4. DEFINITIONS & CLASSIFICATIONS:\n'
+            f'   - ONLY use "### Definition" or "### Types / Classifications" when the user specifically asks to define or classify a concept.\n\n'
+            f'5. CODING REQUESTS:\n'
             f'   - Provide clean, working code in standard markdown code blocks with a brief 2-3 line explanation of how it works.\n\n'
-            f'4. TONE & STYLE:\n'
+            f'6. TONE & STYLE:\n'
             f'   - Direct, helpful, simple, and friendly. Zero preambles ("Sure!", "As an AI model...").\n'
             f'   - Language: Simple English (or Telugu if the prompt is in Telugu).\n'
             f'   - Do not wrap math formulas or Big-O notation in dollar signs ($...$). Write them cleanly as plain text.'
