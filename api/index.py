@@ -161,7 +161,8 @@ SHORT_FORMS = {
     # Cryptography & Network Security
     r'\bcns\b': 'cryptography and network security cns',
     r'\bns\b': 'network security',
-    r'\bis\b': 'information security',
+    r'\binfosec\b': 'information security',
+    r'\bis\s+(?:subject|course|syllabus|exam)\b': 'information security',
     r'\bcrypto\b': 'cryptography',
     # Cloud Computing
     r'\bcc\b': 'cloud computing cc',
@@ -741,7 +742,8 @@ def search_wikipedia(query, max_chars=20000):
             'into', 'over', 'after', 'and', 'or', 'not', 'no', 'but', 'if', 'so', 'as', 'out',
             'all', 'any', 'tell', 'me', 'give', 'show', 'explain', 'difference', 'between', 'vs',
             'can', 'could', 'will', 'would', 'do', 'does', 'did', 'having', 'have', 'has', 'had',
-            'i', 'you', 'he', 'she', 'it', 'we', 'they', 'my', 'your', 'his', 'her', 'its', 'our'
+            'i', 'you', 'he', 'she', 'it', 'we', 'they', 'my', 'your', 'his', 'her', 'its', 'our',
+            'best', 'good', 'long', 'term', 'terms', 'short', 'most', 'many', 'much', 'some', 'any'
         }
         words = [w for w in q_clean.split() if w not in stop_words and len(w) > 2]
         if not words:
@@ -762,7 +764,10 @@ def search_wikipedia(query, max_chars=20000):
             for it in items[:6]:
                 t = it.get('title', '')
                 t_low = t.lower()
-                if 'disambiguation' in t_low or 'list of' in t_low:
+                if any(bad in t_low for bad in [
+                    'disambiguation', 'list of', '(implement)', '(film)', '(album)',
+                    '(song)', '(soundtrack)', '(character)', '(video game)', '(tv series)', '(band)'
+                ]):
                     continue
                 
                 title_words = set(re.findall(r'\b\w+\b', t_low))
@@ -4790,6 +4795,115 @@ def _synthesize_academic_response_en(prompt, is_telugu=False, only_curated=False
             "- **Section 194A**: Interest other than securities (10% if bank interest exceeds ₹40,000 for regular individuals or ₹50,000 for senior citizens)."
         )
 
+    # 75. Best Crop for Long Term (Commercial, Plantation, Fruit & Timber Crops)
+    if any(re.search(pat, q) for pat in [
+        r'\bbest\s+crops?\s+for\s+long\s+term\b',
+        r'\blong\s+term\s+crops?\b',
+        r'\bmost\s+profitable\s+crop\s+for\s+long\s+term\b',
+        r'\bprofitable\s+crops?\s+for\s+long\s+term\b',
+        r'\bwhich\s+crop\s+is\s+best\s+for\s+long\s+term\b',
+        r'\bcrops?\s+(?:to\s+grow|for)\s+long\s+term\s+investment\b',
+        r'\bbest\s+perennial\s+crops?\b',
+        r'\bperennial\s+crops?\b',
+        r'\bwhat\s+are\s+perennial\s+crops?\b',
+        r'\bperennial\s+cash\s+crops?\b',
+        r'\blong\s+term\s+farming\s+crops?\b',
+        r'\bcommercial\s+crops?\s+for\s+long\s+term\b'
+    ]):
+        return (
+            "### Best Crops for Long-Term Farming & High Profitability\n\n"
+            "For long-term agricultural investment (5 to 30+ years), the best crops are **perennial fruit orchards, high-value timber trees, and plantation crops** that produce recurring annual harvests or substantial capital appreciation without needing to be replanted every season.\n\n"
+            "---\n\n"
+            "### 1. Top Commercial Fruit & Nut Orchards (Recurring Annual Income for 25–50+ Years)\n\n"
+            "| Crop | Gestation Period (First Harvest) | Productive Lifespan | Why It Is One of the Best |\n"
+            "|---|---|---|---|\n"
+            "| **Coconut** | 4 – 5 Years | 60 – 80 Years | Highly resilient, continuous monthly harvesting (water, oil, copra), steady demand, and minimal pest vulnerability. |\n"
+            "| **Arecanut (Betel Nut)** | 4 – 5 Years | 30 – 40 Years | Exceptionally high market value per quintal, suited for intercropping with pepper, cocoa, or cardamom. |\n"
+            "| **Mango** | 3 – 5 Years | 40 – 50 Years | High domestic consumption and export value for premium varieties (Alphonso, Kesar, Banganapalli). |\n"
+            "| **Guava & Pomegranate** | 2 – 3 Years | 20 – 25 Years | Fast gestation, high market turnover, and harvestable multiple times per year with drip irrigation. |\n"
+            "| **Walnut & Almond** | 5 – 7 Years | 40 – 50 Years | High-margin nut crops suited for temperate/hilly climates with prolonged shelf life. |\n\n"
+            "---\n\n"
+            "### 2. High-Value Timber & Agroforestry (Massive Long-Term Capital Appreciation)\n\n"
+            "- **Teak Wood (Sagwan)**:\n"
+            "  - **Maturity**: 12 – 15 years.\n"
+            "  - **Value**: High demand in furniture and construction. After the initial 2–3 years of care, teak requires minimal maintenance and acts as a long-term wealth asset.\n"
+            "- **Sandalwood (Chandan)**:\n"
+            "  - **Maturity**: 15 – 20 years.\n"
+            "  - **Value**: One of the costliest woods in the world (heartwood and oil). It is a semi-parasite tree that requires primary host plants (like Pigeon Pea or Casuarina).\n"
+            "- **Malabar Neem (Melia Dubia) & Mahogany**:\n"
+            "  - **Maturity**: 6 – 8 years (Malabar Neem) / 12 – 15 years (Mahogany).\n"
+            "  - **Value**: Fastest-growing hardwood tree used extensively in the plywood and paper industries.\n"
+            "- **Bamboo**:\n"
+            "  - **Maturity**: 3 – 4 years.\n"
+            "  - **Value**: Harvestable every single year after maturity for 30–40 years; used for bio-fuel, construction, paper, and furniture.\n\n"
+            "---\n\n"
+            "### 3. Perennial Plantation & Cash Crops\n\n"
+            "- **Rubber**: Tapped for latex from year 6–7 onward for 25–30 years.\n"
+            "- **Tea & Coffee**: Productive for 40–50+ years with consistent commercial demand.\n"
+            "- **Oil Palm**: High oil yield per hectare; harvested bi-weekly from Year 3 to 25 with government price support.\n\n"
+            "---\n\n"
+            "### 4. Golden Strategy for Farmers (Multi-Tier Intercropping)\n\n"
+            "Because long-term crops have a **gestation period of 3 to 7 years** before the first major harvest, smart farmers use the **Multi-Tier Intercropping Model**:\n"
+            "1. **Long-Term Canopy**: Plant Teak, Coconut, or Mango at wide spacing.\n"
+            "2. **Medium-Term Mid-Story**: Plant Papaya, Banana, or Drumstick (Moringa) between the tree rows for income in Years 1–3.\n"
+            "3. **Short-Term Ground Cover**: Plant Turmeric, Ginger, Legumes, or Vegetables to cover farm operational costs and enrich soil nitrogen right from Year 1."
+        )
+
+    # 76. Kharif, Rabi, and Zaid Crops (Cropping Seasons in India)
+    if any(re.search(pat, q) for pat in [
+        r'\bkharif\s+(?:and|vs)\s+rabi\b',
+        r'\bdifference\s+between\s+kharif\s+and\s+rabi\b',
+        r'\btypes\s+of\s+cropping\s+seasons?\b',
+        r'\bwhat\s+are\s+kharif\s+crops?\b',
+        r'\bwhat\s+are\s+rabi\s+crops?\b',
+        r'\bzaid\s+crops?\b'
+    ]):
+        return (
+            "### Major Cropping Seasons in India (Kharif, Rabi, and Zaid)\n\n"
+            "In Indian agriculture, crops are classified into three distinct seasons based on monsoon patterns and climatic conditions:\n\n"
+            "| Feature / Dimension | **Kharif Crops** (Monsoon Crops) | **Rabi Crops** (Winter Crops) | **Zaid Crops** (Summer Crops) |\n"
+            "|---|---|---|---|\n"
+            "| **Sowing Season** | June – July (onset of Southwest Monsoon) | October – November (retreating monsoon/winter) | March – April (warm summer window) |\n"
+            "| **Harvesting Season** | September – October | April – May | June – July |\n"
+            "| **Climatic Requirements** | Hot, humid weather with heavy rainfall | Warm climate for germination, cold/dry for growth | Warm, dry weather with long day length |\n"
+            "| **Major Crops** | **Rice (Paddy), Maize, Jowar, Bajra, Cotton, Jute, Soybean, Groundnut** | **Wheat, Barley, Mustard, Gram (Chickpeas), Peas, Linseed** | **Watermelon, Muskmelon, Cucumber, Bitter Gourd, Fodder crops** |\n"
+            "| **Water Source** | Primarily dependent on rainfall/monsoon | Relies on canal irrigation, tube wells, and winter showers | Requires regular artificial irrigation |"
+        )
+
+    # 77. Crop Rotation & Principles
+    if any(re.search(pat, q) for pat in [
+        r'\bwhat\s+is\s+crop\s+rotation\b',
+        r'\bdefine\s+crop\s+rotation\b',
+        r'\bbenefits\s+of\s+crop\s+rotation\b',
+        r'\bprinciples\s+of\s+crop\s+rotation\b'
+    ]):
+        return (
+            "### What is Crop Rotation?\n\n"
+            "**Crop rotation** is the agricultural practice of growing a series of different types of crops in the same field across sequenced seasons, rather than growing the same crop repeatedly (monoculture).\n\n"
+            "### Core Principles & Benefits:\n"
+            "1. **Soil Fertility Replenishment**: Alternating heavy nitrogen-consuming crops (like Wheat or Corn) with nitrogen-fixing leguminous crops (like Pulses, Peas, Gram, or Clover) naturally restores soil nutrients.\n"
+            "2. **Pest & Weed Cycle Disruption**: Monoculture allows specific weeds, insects, and fungal pathogens to multiply. Changing the crop type deprives pests of their preferred host and breaks their reproduction cycle without heavy chemical pesticide usage.\n"
+            "3. **Root Depth Variation**: Rotating deep-rooted crops (like Cotton or Pigeon Pea) with shallow-rooted crops (like Rice or Wheat) extracts nutrients from different soil strata and prevents soil compaction.\n"
+            "4. **Erosion Prevention**: Cover crops planted between main seasons prevent wind and water erosion of topsoil."
+        )
+
+    # 78. Cash Crops vs Food Crops
+    if any(re.search(pat, q) for pat in [
+        r'\bcash\s+crops?\s+vs\s+food\s+crops?\b',
+        r'\bdifference\s+between\s+cash\s+crops?\s+and\s+food\s+crops?\b',
+        r'\bwhat\s+are\s+cash\s+crops?\b',
+        r'\bwhat\s+are\s+food\s+crops?\b'
+    ]):
+        return (
+            "### Cash Crops vs. Food Crops\n\n"
+            "| Dimension | **Food Crops** | **Cash Crops (Commercial Crops)** |\n"
+            "|---|---|---|\n"
+            "| **Primary Objective** | Cultivated primarily for human consumption, household subsistence, and food security | Grown primarily for commercial sale in domestic or export markets for cash profit |\n"
+            "| **Economic Nature** | High domestic volume, price-regulated, essential consumer staples | High economic margin per acre, industrial raw material |\n"
+            "| **Key Examples** | **Rice, Wheat, Millets (Ragi, Jowar), Pulses, Vegetables** | **Cotton, Sugarcane, Jute, Tobacco, Tea, Coffee, Rubber, Oil Palm** |\n"
+            "| **Processing Need** | Minimal processing before consumption | Often requires heavy industrial processing (e.g. sugar mills, textile gins) |"
+        )
+
     if only_curated:
         return None
 
@@ -4852,63 +4966,88 @@ def _synthesize_academic_response_en(prompt, is_telugu=False, only_curated=False
         wiki_search_snippets = []
     clean_wiki = re.sub(r'==+[^=]+==+', '', wiki_info).strip() if wiki_info else ''
 
-    # Extract substantive words from the query for strict relevance checks
-    words = [w for w in clean_title.lower().split() if len(w) > 2]
+    # Extract substantive words from the query (strictly exclude generic stop words)
+    GENERIC_STOP_WORDS = {
+        'the', 'a', 'an', 'is', 'was', 'are', 'were', 'for', 'and', 'with', 'from', 'that', 'this',
+        'what', 'best', 'good', 'long', 'term', 'terms', 'short', 'which', 'how', 'can', 'will', 'does', 'do',
+        'did', 'about', 'some', 'any', 'all', 'more', 'most', 'very', 'into', 'over', 'than', 'such',
+        'each', 'other', 'have', 'has', 'had', 'its', 'their', 'when', 'where', 'who', 'why', 'give',
+        'tell', 'find', 'check', 'search', 'know', 'want', 'please', 'help', 'take', 'make', 'like', 'well'
+    }
+    raw_query_words = [w for w in re.findall(r'\b[a-z0-9]{2,}\b', clean_title.lower())]
+    words = [w for w in raw_query_words if w not in GENERIC_STOP_WORDS]
+    if not words:
+        words = [w for w in raw_query_words if w not in {'the', 'a', 'an', 'is', 'are'}]
+
+    # Global noise and junk phrase blacklist
+    GLOBAL_JUNK_PHRASES = [
+        'privacy policy', 'cookie', 'terms of service', 'terms of use', 'health information',
+        'individually identifiable', 'hipaa', 'subscribe', 'sign in', 'sign up', 'login',
+        'all rights reserved', 'copyright', 'disclaimer', 'advertisement', 'sponsored',
+        'javascript is disabled', 'enable javascript', '404', 'not found', 'redirect',
+        'click here', 'read more', 'learn more at', 'retrieved from', 'doi:', 'isbn',
+        'riding crop', 'horse whip', 'whip is a', 'hunting whip', 'whip used for',
+        'dáil', 'leinster house', 'touchdown', 'touchdowns', 'chiefs', 'steelers', 'nfl',
+        'quarterback', 'buccaneers', 'patriots', 'eagles', 'packers', 'gosu', '.gsp', '.gst file',
+        'crop trust'
+    ]
+
+    def is_clean_grammatical_sentence(s_text: str) -> bool:
+        st = s_text.strip()
+        if len(st) < 35 or len(st) > 400:
+            return False
+        # Must start with a capital letter
+        if not st[0].isupper():
+            return False
+        # Must end with proper sentence punctuation
+        if not re.search(r'[.!?]["\']?$', st):
+            return False
+        # Reject orphan grammatical fragments
+        if re.search(r'^(?:and|or|but|because|also|however|so|purposes|available|key details)\b', st, re.I):
+            return False
+        # Reject officer/board lists like "Name 2019-2021 - Name 2022-present"
+        if st.count('–') >= 2 or (st.count('-') >= 4 and any(yr in st for yr in ['2019', '2020', '2021', '2022', '2023', '2024'])):
+            return False
+        st_low = st.lower()
+        if any(jp in st_low for jp in GLOBAL_JUNK_PHRASES):
+            return False
+        # Must contain at least one substantive query word
+        if words and not any(w in st_low for w in words):
+            return False
+        return True
 
     # Pool candidate sentences across all verified sources
     candidates = []
     for s in ddg_snippets:
-        if s and len(s) > 25:
+        if s and is_clean_grammatical_sentence(s):
             candidates.append((s, 4.0))
     for s in gfg_snippets:
-        if s and len(s) > 25:
+        if s and is_clean_grammatical_sentence(s):
             candidates.append((s, 3.0))
     for s in wiki_search_snippets:
-        if s and len(s) > 20:
+        if s and is_clean_grammatical_sentence(s):
             candidates.append((s, 3.5))
     if clean_wiki:
         for s in re.split(r'(?<=[.!?])\s+', clean_wiki):
             s_clean = s.strip()
-            # Clean up broken quotes or orphaned punctuation
             s_clean = re.sub(r'^["\',;:\-\s]+', '', s_clean)
-            if len(s_clean) > 35 and len(s_clean) < 350:
-                # Must contain at least one substantive query word
-                if words and any(w in s_clean.lower() for w in words):
-                    candidates.append((s_clean, 1.5))
+            if is_clean_grammatical_sentence(s_clean):
+                candidates.append((s_clean, 2.0))
 
-    # Score candidates based on query intent and relevance
+    # Score candidates based on substantive relevance
     scored = []
     for s, base_weight in candidates:
         s_low = s.lower()
         score = base_weight
-
-        # Relevance overlap check
         overlap_count = sum(1 for w in words if w in s_low)
-        if words and overlap_count == 0:
-            continue
-        score += overlap_count * 2.5
+        score += overlap_count * 3.0
 
-        # Noise filter for Tax / TDS / GST queries to reject acronym false positives (touchdowns, Irish politics, etc.)
-        is_tax_query = any(k in q_low for k in ['gst', 'tds', 'tax', 'itr', 'challan', 'income tax', 'vat', 'form 140', 'return', 'partnership'])
-        if is_tax_query:
-            if any(junk in s_low for junk in [
-                'touchdown', 'touchdowns', 'chiefs', 'steelers', 'nfl', 'quarterback', 'buccaneers',
-                'patriots', 'eagles', 'packers', 'passing', 'interception', 'yards and', 'tds from',
-                'dáil', 'leinster house', 'fine gael', 'fianna fáil', 'teachta', 'gosu', '.gsp', '.gst file'
-            ]):
-                continue
-
-        if is_release_query:
-            if any(k in s_low for k in ['release', 'scheduled', 'launch', 'delayed', 'window', 'date']):
-                score += 5.0
-            if any(yr in s for yr in ['2024', '2025', '2026', '2027', 'november', 'may', 'autumn', 'fall', 'spring']):
-                score += 6.0
-        elif is_who_query:
-            if any(k in s_low for k in ['founder', 'founded', 'ceo', 'president', 'inventor', 'created by', 'developed by', 'lead']):
-                score += 5.0
-        elif is_where_query:
-            if any(k in s_low for k in ['capital', 'largest city', 'located in', 'situated in', 'headquarters in', 'based in']):
-                score += 5.0
+        if is_release_query and any(k in s_low for k in ['release', 'scheduled', 'launch', 'date']):
+            score += 5.0
+        elif is_who_query and any(k in s_low for k in ['founder', 'founded', 'ceo', 'president', 'inventor', 'created by']):
+            score += 5.0
+        elif is_where_query and any(k in s_low for k in ['capital', 'located in', 'situated in', 'headquarters in']):
+            score += 5.0
 
         scored.append((score, s))
 
@@ -4917,7 +5056,7 @@ def _synthesize_academic_response_en(prompt, is_telugu=False, only_curated=False
     best_sentences = []
     seen = set()
     for _, s in scored:
-        s_norm = s[:45].lower()
+        s_norm = re.sub(r'[^a-z0-9]', '', s[:50].lower())
         if s_norm not in seen:
             seen.add(s_norm)
             best_sentences.append(s)
@@ -4940,6 +5079,8 @@ def _synthesize_academic_response_en(prompt, is_telugu=False, only_curated=False
 
     lead_answer = best_sentences[0]
     lead_answer = re.sub(r'^(?:[A-Za-z]+\s+\d{1,2},?\s+\d{4}\s+)?(?:hi|hello|hey)\s+(?:everyone|guys|all|folks|there)[,:\s]+', '', lead_answer, flags=re.IGNORECASE).strip()
+    # Strip rhetorical lead questions from search snippets for a clean direct answer
+    lead_answer = re.sub(r'^(?:what|which|how|why|is there|are there|can you)\b.*?\?\s*', '', lead_answer, flags=re.IGNORECASE).strip()
     if lead_answer:
         lead_answer = lead_answer[0].upper() + lead_answer[1:]
 

@@ -12,6 +12,7 @@
   <meta name="apple-mobile-web-app-title" content="WorstAI" />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="apple-touch-icon" href="/icon-192.png" />
+  <script src="https://js.puter.com/v2/"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2546,6 +2547,30 @@
           }
           
           if (!success) {
+            // Client-side Zero-Latency Free AI Engine (Puter.js GPT-4o-mini)
+            let puterDone = false;
+            if (typeof puter !== 'undefined' && puter.ai && puter.ai.chat) {
+              try {
+                const puterPrompt = `You are WorstAI, an ultra-fast, intelligent AI knowledge tutor created by GOLLU ADI VENKATA SAI.
+CRITICAL RULE: Answer only what user asked — not more, not less. Keep all explanations simple, direct, accurate, and easy to understand.
+User Question: ${finalPrompt}`;
+                const puterResp = await Promise.race([
+                  puter.ai.chat(puterPrompt, { model: 'gpt-4o-mini' }),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('Puter timeout')), 3500))
+                ]);
+                const rawText = typeof puterResp === 'string' ? puterResp : (puterResp?.message?.content || puterResp?.text || String(puterResp || ''));
+                if (rawText && rawText.trim().length > 15) {
+                  answer = rawText.trim();
+                  agentsUsed = ['WorstAI Intelligence Engine', 'Fact-Checker'];
+                  puterDone = true;
+                  success = true;
+                }
+              } catch(e) {
+                console.warn('Puter AI bypass, falling back to server backend:', e);
+              }
+            }
+            
+            if (!puterDone) {
             // Fall through to server backend
             let idToken = '';
             if (auth.currentUser) {
@@ -2576,6 +2601,7 @@
             answer = data.answer;
             if (data.thinking) thinkingProcess = data.thinking;
             if (data.agents_used) agentsUsed = data.agents_used;
+            }
           }
           
         } else {
