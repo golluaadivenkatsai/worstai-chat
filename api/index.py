@@ -6079,9 +6079,12 @@ class handler(http.server.BaseHTTPRequestHandler):
             return
 
         # --- 3. HIGH-CONCURRENCY RESPONSE CACHE (Instant 0.0001s, handles 10,000 req/sec) ---
-        cached_res = GLOBAL_RESPONSE_CACHE.get(resolved_query)
+        cache_key = f"te:{prompt.strip().lower()}" if is_telugu else prompt.strip().lower()
+        cached_res = GLOBAL_RESPONSE_CACHE.get(cache_key)
         if cached_res:
             c_ans, c_agents = cached_res
+            if is_telugu and not re.search(r'[\u0C00-\u0C7F]', c_ans):
+                c_ans = translate_english_to_telugu(c_ans)
             self.send_json({
                 'success': True,
                 'answer': c_ans,
@@ -6140,12 +6143,13 @@ class handler(http.server.BaseHTTPRequestHandler):
         # --- 4. INSTANT ACADEMIC CURRICULUM ENGINE (Instant 0.001s, 0 network wait) ---
         instant_academic = synthesize_academic_response(resolved_query, is_telugu=is_telugu, only_curated=True)
         if instant_academic:
+            if is_telugu and not re.search(r'[\u0C00-\u0C7F]', instant_academic):
+                instant_academic = translate_english_to_telugu(instant_academic)
             sanitized = sanitize_mermaid_content(instant_academic)
             curated_agents = ['WorstAI-Instant-Curriculum']
             if any(k in prompt_lower or k in resolved_query.lower() for k in ['leetcode', 'code', 'python', 'java', 'algorithm', '1912']):
                 curated_agents = ['LeetCode Code Engine', 'Algorithm Specialist', 'Fact-Checker']
-            GLOBAL_RESPONSE_CACHE.set(resolved_query, sanitized, curated_agents)
-            GLOBAL_RESPONSE_CACHE.set(prompt, sanitized, curated_agents)
+            GLOBAL_RESPONSE_CACHE.set(cache_key, sanitized, curated_agents)
             self.send_json({
                 'success': True,
                 'answer': sanitized,
@@ -6268,8 +6272,7 @@ class handler(http.server.BaseHTTPRequestHandler):
                 final_answer = translate_english_to_telugu(final_answer)
 
             # Store in High-Concurrency Cache for all future queries
-            GLOBAL_RESPONSE_CACHE.set(resolved_query, final_answer, agents_used)
-            GLOBAL_RESPONSE_CACHE.set(prompt, final_answer, agents_used)
+            GLOBAL_RESPONSE_CACHE.set(cache_key, final_answer, agents_used)
 
             self.send_json({
                 'success': True,
